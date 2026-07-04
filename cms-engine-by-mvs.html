@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOP Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Playfair+Display:wght@400;500;600&family=Cormorant+Garamond:wght@400;500;600&family=Libre+Baskerville:wght@400;700&family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1B1A17;
+    --ivory: #F6F2EA;
+    --brass: #A9812F;
+    --stone-200: #E7E5E4;
+    --stone-400: #A8A29E;
+    --stone-500: #78716C;
+    --stone-900: #1C1917;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    color: var(--stone-900);
+  }
+  .shell { display: flex; height: 100vh; background: #F5F5F4; }
+
+  @media (max-width: 900px) {
+    .shell { flex-direction: column; height: auto; min-height: 100vh; }
+    .editor { width: 100%; max-height: 55vh; }
+    .preview-wrap { min-height: 45vh; padding: 32px 20px; }
+  }
+
+  .editor {
+    width: 420px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    border-right: 1px solid var(--stone-200);
+    background: #fff;
+    padding: 40px 32px;
+  }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 4px;
+  }
+  .editor h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 24px;
+    margin: 0 0 32px 0;
+  }
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--stone-500);
+    margin-bottom: 6px;
+  }
+  .field input, .field textarea {
+    width: 100%;
+    border: 1px solid var(--stone-200);
+    background: #fff;
+    padding: 10px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    border-radius: 4px;
+    resize: vertical;
+  }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--brass); }
+  .field select {
+    width: 100%;
+    border: 1px solid var(--stone-200);
+    background: #fff;
+    padding: 10px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    border-radius: 4px;
+  }
+  .field select:focus { outline: none; border-color: var(--brass); }
+  .field input[type="range"] { width: 100%; accent-color: var(--brass); padding: 0; border: none; }
+  .field input[type="color"] {
+    width: 44px; height: 30px;
+    padding: 2px;
+    border: 1px solid var(--stone-200);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--stone-400);
+    margin: 24px 0 12px 0;
+  }
+
+  .toolbar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 24px; }
+  .tool-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: 1px solid var(--stone-200);
+    background: #fff;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--stone-900);
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+  .tool-btn:hover { border-color: var(--brass); background: #FBF6EC; }
+  .tool-icon {
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    background: #F5F5F4;
+    border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--stone-500);
+  }
+
+  .block-list { display: flex; flex-direction: column; gap: 8px; }
+  .block {
+    position: relative;
+    border: 1px solid var(--stone-200);
+    border-radius: 8px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .block:hover { border-color: #F3D896; }
+  .block.selected { border-color: var(--brass); background: #FBF6EC; }
+  .block-type-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--stone-400);
+    margin-bottom: 8px;
+  }
+  .block-controls {
+    position: absolute;
+    top: -12px;
+    right: 8px;
+    display: none;
+    gap: 2px;
+    background: #fff;
+    border: 1px solid var(--stone-200);
+    border-radius: 6px;
+    padding: 3px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .block:hover .block-controls { display: flex; }
+  .block-controls button {
+    border: none;
+    background: none;
+    color: var(--stone-400);
+    font-size: 12px;
+    padding: 2px 6px;
+    cursor: pointer;
+  }
+  .block-controls button:hover { color: var(--stone-900); }
+  .block-controls button.delete:hover { color: #DC2626; }
+  .block-controls button:disabled { opacity: 0.3; cursor: default; }
+
+  .step-row, .item-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--brass);
+    width: 16px;
+    flex-shrink: 0;
+  }
+  .step-row input, .item-row input[type="text"] {
+    flex: 1;
+    border: 1px solid var(--stone-200);
+    padding: 8px 10px;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  .row-remove {
+    border: none; background: none;
+    color: var(--stone-400);
+    cursor: pointer;
+    font-size: 15px;
+    padding: 2px 6px;
+  }
+  .row-remove:hover { color: #DC2626; }
+  .add-link {
+    border: none; background: none;
+    color: var(--brass);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .add-link:hover { color: #8C6B24; }
+  .media-input {
+    width: 100%;
+    border: 1px solid var(--stone-200);
+    padding: 8px 10px;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+
+  .preview-wrap {
+    flex: 1;
+    overflow-y: auto;
+    background: #F5F5F4;
+    padding: 64px 48px;
+    display: flex;
+    justify-content: center;
+  }
+  .sop-card {
+    position: relative;
+    max-width: 480px;
+    width: 100%;
+    background: var(--ivory);
+    padding: 44px 40px 48px 48px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08);
+    height: fit-content;
+  }
+  .sop-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--brass);
+  }
+  .sop-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 28px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0 0 28px 0;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(27,26,23,0.12);
+  }
+  .sop-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 10px;
+  }
+  .sop-section { margin-bottom: 28px; }
+  .sop-standard {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+  .sop-steps, .sop-checklist { list-style: none; margin: 0; padding: 0; }
+  .sop-steps li { display: flex; gap: 12px; line-height: 1.55; margin-bottom: 14px; }
+  .sop-steps li .n {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--brass);
+    flex-shrink: 0;
+    padding-top: 3px;
+  }
+  .sop-checklist li { font-size: 14px; margin-bottom: 8px; }
+  .sop-checklist li.checked { color: var(--stone-400); text-decoration: line-through; }
+  .sop-media { margin-bottom: 28px; border-radius: 2px; overflow: hidden; border: 1px solid rgba(27,26,23,0.12); }
+  .sop-media img { width: 100%; display: block; }
+  .sop-media-caption { padding: 10px 14px; font-size: 12px; color: var(--stone-500); font-style: italic; background: #fff; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <div class="editor">
+    <div class="eyebrow">SOP Editor</div>
+    <h2>Service Standard</h2>
+
+    <div class="field">
+      <label>Title</label>
+      <input id="in-title" type="text" value="Table Setup">
+    </div>
+    <div class="field">
+      <label>Standard</label>
+      <textarea id="in-standard" rows="4">Tables must be set precisely to luxury standards to ensure guest comfort.</textarea>
+    </div>
+
+    <div class="section-label" style="margin-top:0;">Style</div>
+    <div class="field">
+      <label>Section</label>
+      <select id="in-style-target">
+        <option value="title" selected>Title</option>
+        <option value="standard">Standard</option>
+        <option value="procedure">Procedure</option>
+        <option value="checklist">Checklist</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Font Family</label>
+      <select id="in-font-family">
+        <option value="'Fraunces', serif">Fraunces (Serif)</option>
+        <option value="'Playfair Display', serif">Playfair Display (Serif)</option>
+        <option value="'Cormorant Garamond', serif">Cormorant Garamond (Serif)</option>
+        <option value="'Libre Baskerville', serif">Libre Baskerville (Serif)</option>
+        <option value="'Inter', sans-serif">Inter (Sans-Serif)</option>
+        <option value="'Manrope', sans-serif">Manrope (Sans-Serif)</option>
+        <option value="'Work Sans', sans-serif">Work Sans (Sans-Serif)</option>
+        <option value="'IBM Plex Mono', monospace">Plex Mono (Mono)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Font Size (<span id="font-size-value">28</span>px)</label>
+      <input type="range" id="in-font-size" min="12" max="36" value="28">
+    </div>
+    <div class="field">
+      <label>Text Colour</label>
+      <input type="color" id="in-text-color" value="#1B1A17">
+    </div>
+
+    <div class="section-label">Add Block</div>
+    <div class="toolbar">
+      <button class="tool-btn" data-type="procedure"><span class="tool-icon">01</span>Procedure</button>
+      <button class="tool-btn" data-type="checklist"><span class="tool-icon">&#9744;</span>Checklist</button>
+      <button class="tool-btn" data-type="media"><span class="tool-icon">&#9642;</span>Media</button>
+    </div>
+
+    <div class="block-list" id="block-list"></div>
+  </div>
+
+  <div class="preview-wrap">
+    <div class="sop-card">
+      <h1 class="sop-title" id="prev-title">Table Setup</h1>
+      <div class="sop-section">
+        <div class="sop-eyebrow">Standard</div>
+        <p class="sop-standard" id="prev-standard"></p>
+      </div>
+      <div id="prev-blocks"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let selectedId = null;
+
+  const state = {
+    title: 'Table Setup',
+    standard: 'Tables must be set precisely to luxury standards to ensure guest comfort.',
+    blocks: [
+      { id: 'b1', type: 'procedure', steps: ['Place the charger plate centred.', 'Align the knife two centimetres from the edge.', 'Fold the napkin into a crisp triangle.'] }
+    ],
+    styleTarget: 'title',
+    styles: {
+      title: { fontFamily: "'Fraunces', serif", fontSize: 28, textColor: '#1B1A17' },
+      standard: { fontFamily: "'Fraunces', serif", fontSize: 15, textColor: '#1B1A17' },
+      procedure: { fontFamily: "'Inter', sans-serif", fontSize: 14, textColor: '#1B1A17' },
+      checklist: { fontFamily: "'Inter', sans-serif", fontSize: 14, textColor: '#1B1A17' }
+    }
+  };
+
+  const uid = () => 'id-' + Math.random().toString(36).slice(2, 10);
+
+  function createBlock(type) {
+    if (type === 'procedure') return { id: uid(), type, steps: [''] };
+    if (type === 'checklist') return { id: uid(), type, items: [{ id: uid(), text: '', checked: false }] };
+    return { id: uid(), type: 'media', content: '', alt: '', caption: '' };
+  }
+
+  const titleIn = document.getElementById('in-title');
+  const standardIn = document.getElementById('in-standard');
+  const blockListEl = document.getElementById('block-list');
+
+  titleIn.addEventListener('input', (e) => { state.title = e.target.value; renderPreview(); });
+  standardIn.addEventListener('input', (e) => { state.standard = e.target.value; renderPreview(); });
+
+  const styleTargetIn = document.getElementById('in-style-target');
+  const fontFamilyIn = document.getElementById('in-font-family');
+  const fontSizeIn = document.getElementById('in-font-size');
+  const fontSizeValue = document.getElementById('font-size-value');
+  const textColorIn = document.getElementById('in-text-color');
+
+  function loadStyleControls() {
+    const s = state.styles[state.styleTarget];
+    fontFamilyIn.value = s.fontFamily;
+    fontSizeIn.value = s.fontSize;
+    fontSizeValue.textContent = s.fontSize;
+    textColorIn.value = s.textColor;
+  }
+
+  styleTargetIn.addEventListener('change', (e) => { state.styleTarget = e.target.value; loadStyleControls(); });
+  fontFamilyIn.addEventListener('change', (e) => { state.styles[state.styleTarget].fontFamily = e.target.value; renderPreview(); });
+  fontSizeIn.addEventListener('input', (e) => {
+    const size = parseInt(e.target.value, 10);
+    state.styles[state.styleTarget].fontSize = size;
+    fontSizeValue.textContent = size;
+    renderPreview();
+  });
+  textColorIn.addEventListener('input', (e) => { state.styles[state.styleTarget].textColor = e.target.value; renderPreview(); });
+  loadStyleControls();
+
+  document.querySelectorAll('.tool-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.blocks.push(createBlock(btn.dataset.type));
+      renderBlocks();
+      renderPreview();
+    });
+  });
+
+  function moveBlock(id, dir) {
+    const i = state.blocks.findIndex((b) => b.id === id);
+    const t = i + dir;
+    if (t < 0 || t >= state.blocks.length) return;
+    [state.blocks[i], state.blocks[t]] = [state.blocks[t], state.blocks[i]];
+    renderBlocks();
+    renderPreview();
+  }
+
+  function deleteBlock(id) {
+    state.blocks = state.blocks.filter((b) => b.id !== id);
+    if (selectedId === id) selectedId = null;
+    renderBlocks();
+    renderPreview();
+  }
+
+  function blockLabel(type) {
+    return type === 'procedure' ? 'Procedure' : type === 'checklist' ? 'Checklist' : 'Media';
+  }
+
+  function renderBlockEditor(block) {
+    if (block.type === 'procedure') {
+      let html = '';
+      block.steps.forEach((step, i) => {
+        html += `
+          <div class="step-row">
+            <span class="step-num">${String(i + 1).padStart(2, '0')}</span>
+            <input type="text" value="${step.replace(/"/g, '&quot;')}" data-step-index="${i}">
+            <button class="row-remove" data-remove-step="${i}">&times;</button>
+          </div>`;
+      });
+      html += `<button class="add-link" data-add-step>+ Add step</button>`;
+      return html;
+    }
+    if (block.type === 'checklist') {
+      let html = '';
+      block.items.forEach((item) => {
+        html += `
+          <div class="item-row">
+            <input type="checkbox" ${item.checked ? 'checked' : ''} data-item-check="${item.id}">
+            <input type="text" value="${item.text.replace(/"/g, '&quot;')}" placeholder="Checklist item" data-item-text="${item.id}">
+            <button class="row-remove" data-remove-item="${item.id}">&times;</button>
+          </div>`;
+      });
+      html += `<button class="add-link" data-add-item>+ Add item</button>`;
+      return html;
+    }
+    return `
+      <input class="media-input" type="text" placeholder="Image URL" value="${(block.content || '').replace(/"/g, '&quot;')}" data-media-url style="margin-bottom:6px;">
+      <input class="media-input" type="text" placeholder="Alt text" value="${(block.alt || '').replace(/"/g, '&quot;')}" data-media-alt style="margin-bottom:6px;">
+      <input class="media-input" type="text" placeholder="Caption" value="${(block.caption || '').replace(/"/g, '&quot;')}" data-media-caption>
+    `;
+  }
+
+  function renderBlocks() {
+    blockListEl.innerHTML = '';
+    state.blocks.forEach((block, index) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'block' + (selectedId === block.id ? ' selected' : '');
+      wrap.innerHTML = `
+        <div class="block-controls">
+          <button data-move="-1" ${index === 0 ? 'disabled' : ''}>&uarr;</button>
+          <button data-move="1" ${index === state.blocks.length - 1 ? 'disabled' : ''}>&darr;</button>
+          <button class="delete" data-delete>&times;</button>
+        </div>
+        <div class="block-type-label">${blockLabel(block.type)}</div>
+        ${renderBlockEditor(block)}
+      `;
+
+      wrap.addEventListener('click', () => { selectedId = block.id; renderBlocks(); });
+
+      wrap.querySelector('[data-move="-1"]').addEventListener('click', (e) => { e.stopPropagation(); moveBlock(block.id, -1); });
+      wrap.querySelector('[data-move="1"]').addEventListener('click', (e) => { e.stopPropagation(); moveBlock(block.id, 1); });
+      wrap.querySelector('[data-delete]').addEventListener('click', (e) => { e.stopPropagation(); deleteBlock(block.id); });
+
+      if (block.type === 'procedure') {
+        wrap.querySelectorAll('[data-step-index]').forEach((input) => {
+          input.addEventListener('click', (e) => e.stopPropagation());
+          input.addEventListener('input', (e) => {
+            block.steps[+e.target.dataset.stepIndex] = e.target.value;
+            renderPreview();
+          });
+        });
+        wrap.querySelectorAll('[data-remove-step]').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            block.steps.splice(+btn.dataset.removeStep, 1);
+            renderBlocks();
+            renderPreview();
+          });
+        });
+        const addStepBtn = wrap.querySelector('[data-add-step]');
+        if (addStepBtn) addStepBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          block.steps.push('');
+          renderBlocks();
+          renderPreview();
+        });
+      }
+
+      if (block.type === 'checklist') {
+        wrap.querySelectorAll('[data-item-check]').forEach((cb) => {
+          cb.addEventListener('click', (e) => e.stopPropagation());
+          cb.addEventListener('change', (e) => {
+            const item = block.items.find((it) => it.id === e.target.dataset.itemCheck);
+            item.checked = e.target.checked;
+            renderPreview();
+          });
+        });
+        wrap.querySelectorAll('[data-item-text]').forEach((input) => {
+          input.addEventListener('click', (e) => e.stopPropagation());
+          input.addEventListener('input', (e) => {
+            const item = block.items.find((it) => it.id === e.target.dataset.itemText);
+            item.text = e.target.value;
+            renderPreview();
+          });
+        });
+        wrap.querySelectorAll('[data-remove-item]').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            block.items = block.items.filter((it) => it.id !== btn.dataset.removeItem);
+            renderBlocks();
+            renderPreview();
+          });
+        });
+        const addItemBtn = wrap.querySelector('[data-add-item]');
+        if (addItemBtn) addItemBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          block.items.push({ id: uid(), text: '', checked: false });
+          renderBlocks();
+          renderPreview();
+        });
+      }
+
+      if (block.type === 'media') {
+        const mediaInput = wrap.querySelector('[data-media-url]');
+        mediaInput.addEventListener('click', (e) => e.stopPropagation());
+        mediaInput.addEventListener('input', (e) => {
+          block.content = e.target.value;
+          renderPreview();
+        });
+        const altInput = wrap.querySelector('[data-media-alt]');
+        altInput.addEventListener('click', (e) => e.stopPropagation());
+        altInput.addEventListener('input', (e) => {
+          block.alt = e.target.value;
+          renderPreview();
+        });
+        const captionInput = wrap.querySelector('[data-media-caption]');
+        captionInput.addEventListener('click', (e) => e.stopPropagation());
+        captionInput.addEventListener('input', (e) => {
+          block.caption = e.target.value;
+          renderPreview();
+        });
+      }
+
+      blockListEl.appendChild(wrap);
+    });
+  }
+
+  function renderPreview() {
+    const titleEl = document.getElementById('prev-title');
+    const standardEl = document.getElementById('prev-standard');
+
+    titleEl.textContent = state.title || 'Untitled Standard';
+    standardEl.textContent = state.standard || 'No standard set.';
+
+    titleEl.style.fontFamily = state.styles.title.fontFamily;
+    titleEl.style.color = state.styles.title.textColor;
+    titleEl.style.fontSize = state.styles.title.fontSize + 'px';
+
+    standardEl.style.fontFamily = state.styles.standard.fontFamily;
+    standardEl.style.color = state.styles.standard.textColor;
+    standardEl.style.fontSize = state.styles.standard.fontSize + 'px';
+
+    const blocksEl = document.getElementById('prev-blocks');
+    blocksEl.innerHTML = '';
+
+    state.blocks.forEach((block) => {
+      if (block.type === 'procedure') {
+        const steps = block.steps.filter((s) => s.trim());
+        if (!steps.length) return;
+        const section = document.createElement('div');
+        section.className = 'sop-section';
+        section.innerHTML = `<div class="sop-eyebrow">Procedure</div><ol class="sop-steps"></ol>`;
+        const ol = section.querySelector('ol');
+        ol.style.fontFamily = state.styles.procedure.fontFamily;
+        ol.style.color = state.styles.procedure.textColor;
+        ol.style.fontSize = state.styles.procedure.fontSize + 'px';
+        steps.forEach((step, i) => {
+          const li = document.createElement('li');
+          li.innerHTML = `<span class="n">${String(i + 1).padStart(2, '0')}</span><span>${step}</span>`;
+          ol.appendChild(li);
+        });
+        blocksEl.appendChild(section);
+      }
+
+      if (block.type === 'checklist') {
+        const items = block.items.filter((it) => it.text.trim());
+        if (!items.length) return;
+        const section = document.createElement('div');
+        section.className = 'sop-section';
+        section.innerHTML = `<div class="sop-eyebrow">Checklist</div><ul class="sop-checklist"></ul>`;
+        const ul = section.querySelector('ul');
+        ul.style.fontFamily = state.styles.checklist.fontFamily;
+        ul.style.color = state.styles.checklist.textColor;
+        ul.style.fontSize = state.styles.checklist.fontSize + 'px';
+        items.forEach((item) => {
+          const li = document.createElement('li');
+          if (item.checked) li.className = 'checked';
+          li.textContent = (item.checked ? '\u2611 ' : '\u2610 ') + item.text;
+          ul.appendChild(li);
+        });
+        blocksEl.appendChild(section);
+      }
+
+      if (block.type === 'media' && block.content.trim()) {
+        const div = document.createElement('div');
+        div.className = 'sop-media';
+        const altText = (block.alt || 'SOP media').replace(/"/g, '&quot;');
+        const captionHtml = block.caption && block.caption.trim()
+          ? `<div class="sop-media-caption">${block.caption}</div>`
+          : '';
+        div.innerHTML = `<img src="${block.content}" alt="${altText}" onerror="this.closest('.sop-media').remove()">${captionHtml}`;
+        blocksEl.appendChild(div);
+      }
+    });
+  }
+
+  renderBlocks();
+  renderPreview();
+</script>
+
+</body>
+</html>
