@@ -319,10 +319,10 @@
   }
   .sop-card {
     position: relative;
-    max-width: 480px;
+    max-width: 900px;
     width: 100%;
     background: var(--token-background);
-    padding: 44px 40px 48px 48px;
+    padding: 44px 56px 48px 64px;
     border-radius: var(--radius-default);
     box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08);
     height: fit-content;
@@ -401,6 +401,7 @@
 
   .proc-step { margin-bottom: 18px; }
   .proc-step:last-child { margin-bottom: 0; }
+  .proc-steps-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px 32px; }
   .proc-step-title { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--brass); margin-bottom: 8px; }
   .proc-step ul { list-style: none; margin: 0; padding: 0; }
   .proc-step li { position: relative; padding-left: 16px; line-height: 1.55; margin-bottom: 6px; }
@@ -1252,7 +1253,8 @@
         if (!steps.length) return;
         const section = document.createElement('div');
         section.className = 'sop-section';
-        section.innerHTML = `<div class="sop-eyebrow">Procedure</div>`;
+        section.innerHTML = `<div class="sop-eyebrow">Procedure</div><div class="proc-steps-grid"></div>`;
+        const grid = section.querySelector('.proc-steps-grid');
         steps.forEach((step, i) => {
           const stepDiv = document.createElement('div');
           stepDiv.className = 'proc-step';
@@ -1261,7 +1263,7 @@
           stepDiv.style.fontSize = state.styles.procedure.fontSize + 'px';
           const bullets = step.bullets.filter((b) => b.trim());
           stepDiv.innerHTML = `<div class="proc-step-title">${String(i + 1).padStart(2, '0')} — ${step.title || 'Untitled step'}</div><ul>${bullets.map((b) => `<li>${b}</li>`).join('')}</ul>`;
-          section.appendChild(stepDiv);
+          grid.appendChild(stepDiv);
         });
         blocksEl.appendChild(section);
       }
