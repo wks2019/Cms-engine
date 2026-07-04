@@ -319,14 +319,21 @@
   }
   .sop-card {
     position: relative;
-    max-width: 900px;
     width: 100%;
     background: var(--token-background);
-    padding: 44px 56px 48px 64px;
     border-radius: var(--radius-default);
     box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08);
     height: fit-content;
   }
+  .sop-card.portrait { max-width: 480px; padding: 44px 40px 48px 48px; }
+  .sop-card.landscape { max-width: 900px; padding: 44px 56px 48px 64px; }
+  .sop-card.portrait .proc-steps-grid { grid-template-columns: 1fr; }
+  .orientation-toggle { display: flex; border: 1px solid var(--stone-200); border-radius: var(--radius-default); overflow: hidden; margin-bottom: 20px; }
+  .orientation-toggle button {
+    flex: 1; border: none; background: #fff; padding: 8px 0;
+    font-size: 12px; font-family: 'Inter', sans-serif; color: var(--stone-500); cursor: pointer;
+  }
+  .orientation-toggle button.active { background: var(--brass); color: #fff; }
   .sop-card::before {
     content: '';
     position: absolute;
@@ -467,6 +474,10 @@
   <div class="editor">
     <div class="eyebrow">CMS Engine by MvS</div>
     <h2>Service Standard</h2>
+    <div class="orientation-toggle" id="orientation-toggle">
+      <button data-orientation="portrait">Portrait</button>
+      <button data-orientation="landscape" class="active">Landscape</button>
+    </div>
     <button class="tool-btn" id="open-templates-btn" style="margin-bottom:20px;"><span class="tool-icon">&#9776;</span>Templates</button>
 
     <div class="section-label" style="margin-top:0;">Header</div>
@@ -584,7 +595,7 @@
   </div>
 
   <div class="preview-wrap">
-    <div class="sop-card">
+    <div class="sop-card landscape" id="sop-card">
       <div class="cms-header" id="prev-header" style="display:none;">
         <div class="cms-brand">
           <div class="cms-brand-mark"></div>
@@ -643,6 +654,7 @@
     title: 'Table Setup',
     standard: 'Tables must be set precisely to luxury standards to ensure guest comfort.',
     scope: '',
+    orientation: 'landscape',
     blocks: [
       { id: 'b1', type: 'procedure', steps: [
         { title: 'Charger Placement', bullets: ['Place the charger plate centred.'] },
@@ -688,6 +700,15 @@
   titleIn.addEventListener('input', (e) => { state.title = e.target.value; renderPreview(); });
   standardIn.addEventListener('input', (e) => { state.standard = e.target.value; renderPreview(); });
   scopeIn.addEventListener('input', (e) => { state.scope = e.target.value; renderPreview(); });
+
+  const sopCardEl = document.getElementById('sop-card');
+  document.querySelectorAll('#orientation-toggle button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.orientation = btn.dataset.orientation;
+      document.querySelectorAll('#orientation-toggle button').forEach((b) => b.classList.toggle('active', b === btn));
+      sopCardEl.className = 'sop-card ' + state.orientation;
+    });
+  });
 
   const headerFieldMap = { 'in-company-name': 'companyName', 'in-company-website': 'companyWebsite', 'in-company-address': 'companyAddress' };
   Object.entries(headerFieldMap).forEach(([id, key]) => {
