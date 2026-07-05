@@ -419,6 +419,12 @@
   .sop-table th, .sop-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--token-border); }
   .sop-table thead th { background: rgba(169,129,47,0.08); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--brass); }
   .sop-table tbody tr:last-child td { border-bottom: none; }
+  .sop-rating-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .sop-rating-stars { font-size: 13px; color: var(--brass); letter-spacing: 2px; }
+  .sop-field-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  .sop-field-label { flex-shrink: 0; }
+  .sop-field-line { flex: 1; border-bottom: 1px solid var(--stone-400); min-height: 18px; }
+  .sop-field-hint { font-family: 'IBM Plex Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--stone-400); flex-shrink: 0; }
 
   .table-editor { display: flex; flex-direction: column; gap: 6px; }
   .table-editor-row { display: flex; gap: 6px; align-items: center; }
@@ -522,7 +528,9 @@
       <button data-orientation="portrait" data-tip="Narrow card, single-column procedure.">Portrait</button>
       <button data-orientation="landscape" class="active" data-tip="Wide card, two-column procedure.">Landscape</button>
     </div>
-    <button class="tool-btn" id="open-templates-btn" style="margin-bottom:20px;" data-tip="Start from a preset. Replaces current title, purpose, scope and blocks."><span class="tool-icon">&#9776;</span>Templates</button>
+    <button class="tool-btn" id="open-templates-btn" style="margin-bottom:6px;" data-tip="Start from a preset. Replaces current title, purpose, scope and blocks."><span class="tool-icon">&#9776;</span>Templates</button>
+    <button class="tool-btn" id="save-library-btn" style="margin-bottom:6px;" data-tip="Save the current document to this browser's library."><span class="tool-icon">&#43;</span>Save to Library</button>
+    <button class="tool-btn" id="open-library-btn" style="margin-bottom:20px;" data-tip="Load or manage documents saved in this browser."><span class="tool-icon">&#9633;</span>My Library</button>
 
     <div class="section-label" style="margin-top:0;">Header</div>
     <div class="field">
@@ -637,6 +645,8 @@
       <button class="tool-btn" data-type="procedure"><span class="tool-icon">01</span>Procedure</button>
       <button class="tool-btn" data-type="checklist"><span class="tool-icon">&#9744;</span>Checklist</button>
       <button class="tool-btn" data-type="table"><span class="tool-icon">&#9638;</span>Table</button>
+      <button class="tool-btn" data-type="rating"><span class="tool-icon">&#9733;</span>Rating</button>
+      <button class="tool-btn" data-type="field"><span class="tool-icon">&#9997;</span>Field</button>
       <button class="tool-btn" data-type="media"><span class="tool-icon">&#9642;</span>Media</button>
     </div>
 
@@ -682,6 +692,19 @@
     <div class="color-modal-actions">
       <button class="color-modal-cancel" id="color-modal-cancel">Cancel</button>
       <button class="color-modal-set" id="color-modal-set">Set</button>
+    </div>
+  </div>
+</div>
+
+<div class="tpl-modal-overlay" id="lib-modal">
+  <div class="tpl-modal">
+    <h3>My Library</h3>
+    <div class="tpl-grid" id="lib-grid"></div>
+    <div style="display:flex; gap:12px; align-items:center;">
+      <button class="tpl-modal-close" id="lib-modal-close">Close</button>
+      <button class="add-link" id="lib-export">Export JSON</button>
+      <button class="add-link" id="lib-import">Import JSON</button>
+      <input type="file" id="lib-import-file" accept=".json" style="display:none;">
     </div>
   </div>
 </div>
@@ -739,6 +762,8 @@
     if (type === 'procedure') return { id: uid(), type, steps: [{ title: '', bullets: [''] }] };
     if (type === 'checklist') return { id: uid(), type, items: [{ id: uid(), text: '', checked: false }] };
     if (type === 'table') return { id: uid(), type, headers: ['Column 1', 'Column 2'], rows: [['', '']] };
+    if (type === 'rating') return { id: uid(), type, items: [{ id: uid(), label: '', stars: 3 }] };
+    if (type === 'field') return { id: uid(), type, items: [{ id: uid(), label: '', fieldType: 'text' }] };
     return { id: uid(), type: 'media', content: '', alt: '', caption: '' };
   }
 
@@ -938,6 +963,83 @@
       blocks: [
         { type: 'media', content: '', alt: 'Reference photo', caption: 'Correct layout example.' }
       ]
+    },
+    {
+      name: 'Closing Checklist',
+      desc: 'End-of-service shutdown checklist.',
+      title: 'Closing Checklist',
+      standard: 'All closing tasks must be completed, verified and signed off before staff leave the outlet.',
+      scope: 'Applies to closing-shift staff across all outlets.',
+      blocks: [
+        { type: 'checklist', items: [
+          { text: 'Clear and reset all tables', checked: false },
+          { text: 'Secure cash and complete till reconciliation', checked: false },
+          { text: 'Switch off equipment per shutdown order', checked: false },
+          { text: 'Lock storage and service areas', checked: false },
+          { text: 'Complete closing log and handover notes', checked: false }
+        ] }
+      ]
+    },
+    {
+      name: 'Kitchen HACCP Check',
+      desc: 'Food safety temperature and hygiene log.',
+      title: 'Kitchen HACCP Check',
+      standard: 'Critical control points must be checked and recorded at every shift to maintain food safety compliance.',
+      scope: 'Applies to all kitchen staff on duty. Records retained per food safety policy.',
+      blocks: [
+        { type: 'table', headers: ['Control Point', 'Standard', 'Reading', 'Action if Failed'], rows: [
+          ['Fridge temperature', '0–5 °C', '', 'Report to head chef, move stock'],
+          ['Freezer temperature', '-18 °C or below', '', 'Report to head chef, move stock'],
+          ['Hot holding', '63 °C or above', '', 'Discard after 2 hours'],
+          ['Cooked food core temp', '75 °C or above', '', 'Continue cooking, recheck']
+        ] }
+      ]
+    },
+    {
+      name: 'Shift Handover',
+      desc: 'Structured handover between shifts.',
+      title: 'Shift Handover',
+      standard: 'Every handover must transfer complete operational context so the incoming shift can act without gaps.',
+      scope: 'Applies to supervisors and team leaders at every shift change.',
+      blocks: [
+        { type: 'procedure', steps: [
+          { title: 'Operational Status', bullets: ['Summarise occupancy, covers, and current service state.', 'Flag any equipment faults or maintenance requests.'] },
+          { title: 'Guest Notes', bullets: ['Hand over VIPs in-house, special requests, and allergies.', 'Report any unresolved complaints with current status.'] },
+          { title: 'Outstanding Tasks', bullets: ['List incomplete tasks with owner and deadline.', 'Confirm the incoming supervisor has acknowledged.'] }
+        ] }
+      ]
+    },
+    {
+      name: 'Incident Report',
+      desc: 'Structured record of an operational incident.',
+      title: 'Incident Report',
+      standard: 'Every incident must be documented factually, immediately, and escalated according to severity.',
+      scope: 'Applies to all staff witnessing or responding to an incident.',
+      blocks: [
+        { type: 'table', headers: ['Field', 'Detail'], rows: [
+          ['Date and time', ''],
+          ['Location', ''],
+          ['Persons involved', ''],
+          ['Description of incident', ''],
+          ['Immediate action taken', ''],
+          ['Reported to', ''],
+          ['Follow-up required', '']
+        ] }
+      ]
+    },
+    {
+      name: 'VIP Arrival',
+      desc: 'Pre-arrival and welcome procedure for VIP guests.',
+      title: 'VIP Arrival',
+      standard: 'VIP guests must experience a flawless, personalised arrival reflecting the highest brand standards.',
+      scope: 'Applies to front office, butler service, and housekeeping for flagged VIP arrivals.',
+      blocks: [
+        { type: 'procedure', steps: [
+          { title: 'Pre-Arrival', bullets: ['Review guest profile, preferences, and history.', 'Inspect the room against VIP amenity standards.', 'Brief all departments at the daily line-up.'] },
+          { title: 'Arrival', bullets: ['Greet by name at the entrance with the duty manager.', 'Escort directly to the room; complete in-room check-in.'] },
+          { title: 'Follow-Up', bullets: ['Courtesy contact within two hours of arrival.', 'Log preferences observed for future stays.'] }
+        ] }
+      ]
     }
   ];
 
@@ -948,6 +1050,8 @@
     state.blocks = tpl.blocks.map((b) => {
       if (b.type === 'checklist') return { id: uid(), type: 'checklist', items: b.items.map((it) => ({ id: uid(), text: it.text, checked: !!it.checked })) };
       if (b.type === 'table') return { id: uid(), type: 'table', headers: [...b.headers], rows: b.rows.map((r) => [...r]) };
+      if (b.type === 'rating') return { id: uid(), type: 'rating', items: b.items.map((it) => ({ id: uid(), label: it.label, stars: it.stars })) };
+      if (b.type === 'field') return { id: uid(), type: 'field', items: b.items.map((it) => ({ id: uid(), label: it.label, fieldType: it.fieldType })) };
       if (b.type === 'procedure') return { id: uid(), type: 'procedure', steps: b.steps.map((s) => ({ title: s.title, bullets: [...s.bullets] })) };
       return { id: uid(), type: 'media', content: b.content || '', alt: b.alt || '', caption: b.caption || '' };
     });
@@ -982,6 +1086,121 @@
   document.getElementById('tpl-modal-close').addEventListener('click', closeTplModal);
   tplModal.addEventListener('click', (e) => { if (e.target === tplModal) closeTplModal(); });
 
+  /* ---- Library (localStorage) ---- */
+  const LIB_KEY = 'cms-library';
+  const libModal = document.getElementById('lib-modal');
+  const libGrid = document.getElementById('lib-grid');
+
+  function readLibrary() {
+    try { return JSON.parse(localStorage.getItem(LIB_KEY)) || []; } catch { return []; }
+  }
+  function writeLibrary(entries) { localStorage.setItem(LIB_KEY, JSON.stringify(entries)); }
+
+  function snapshotState() {
+    return JSON.parse(JSON.stringify({
+      header: state.header, meta: state.meta, title: state.title,
+      standard: state.standard, scope: state.scope, blocks: state.blocks,
+      orientation: state.orientation, styles: state.styles
+    }));
+  }
+
+  function loadSnapshot(snap) {
+    Object.assign(state.header, snap.header);
+    Object.assign(state.meta, snap.meta);
+    state.title = snap.title; state.standard = snap.standard; state.scope = snap.scope || '';
+    state.blocks = snap.blocks;
+    state.orientation = snap.orientation || 'landscape';
+    if (snap.styles) Object.keys(state.styles).forEach((k) => { if (snap.styles[k]) Object.assign(state.styles[k], snap.styles[k]); });
+    titleIn.value = state.title;
+    standardIn.value = state.standard;
+    scopeIn.value = state.scope;
+    Object.entries(headerFieldMap).forEach(([id, key]) => { document.getElementById(id).value = state.header[key] || ''; });
+    Object.entries(metaFieldMap).forEach(([id, key]) => { document.getElementById(id).value = state.meta[key] || ''; });
+    document.getElementById('in-show-prepared-by').checked = !!state.meta.showPreparedBy;
+    preparedByField.style.display = state.meta.showPreparedBy ? '' : 'none';
+    sopCardEl.className = 'sop-card ' + state.orientation;
+    document.querySelectorAll('#orientation-toggle button').forEach((b) => b.classList.toggle('active', b.dataset.orientation === state.orientation));
+    selectedId = null;
+    loadStyleControls();
+    renderBlocks();
+    renderPreview();
+  }
+
+  function renderLibrary() {
+    const entries = readLibrary();
+    libGrid.innerHTML = '';
+    if (!entries.length) {
+      const note = document.createElement('div');
+      note.className = 'empty-note';
+      note.style.gridColumn = '1 / -1';
+      note.textContent = 'Nothing saved yet. Use "Save to Library" to keep the current document in this browser.';
+      libGrid.appendChild(note);
+      return;
+    }
+    entries.forEach((entry) => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'tpl-card';
+      card.style.position = 'relative';
+      card.innerHTML = `<div class="tpl-card-name">${esc(entry.name)}</div><div class="tpl-card-desc">Saved ${new Date(entry.savedAt).toLocaleDateString()}</div><span class="row-remove" data-lib-delete="${entry.id}" style="position:absolute; top:6px; right:6px;">&times;</span>`;
+      card.addEventListener('click', (e) => {
+        if (e.target.dataset.libDelete) return;
+        loadSnapshot(entry.snapshot);
+        closeLibModal();
+      });
+      card.querySelector('[data-lib-delete]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        writeLibrary(readLibrary().filter((en) => en.id !== entry.id));
+        renderLibrary();
+      });
+      libGrid.appendChild(card);
+    });
+  }
+
+  function openLibModal() { renderLibrary(); libModal.classList.add('open'); }
+  function closeLibModal() { libModal.classList.remove('open'); }
+
+  document.getElementById('save-library-btn').addEventListener('click', () => {
+    const name = prompt('Name this document:', state.title || 'Untitled');
+    if (!name) return;
+    const entries = readLibrary();
+    entries.push({ id: uid(), name: name.trim(), savedAt: Date.now(), snapshot: snapshotState() });
+    writeLibrary(entries);
+    openLibModal();
+  });
+  document.getElementById('open-library-btn').addEventListener('click', openLibModal);
+  document.getElementById('lib-modal-close').addEventListener('click', closeLibModal);
+  libModal.addEventListener('click', (e) => { if (e.target === libModal) closeLibModal(); });
+
+  document.getElementById('lib-export').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(readLibrary(), null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'cms-library.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  const libImportFile = document.getElementById('lib-import-file');
+  document.getElementById('lib-import').addEventListener('click', () => libImportFile.click());
+  libImportFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = JSON.parse(reader.result);
+        if (!Array.isArray(imported)) throw new Error('bad format');
+        const existing = readLibrary();
+        const ids = new Set(existing.map((en) => en.id));
+        imported.forEach((en) => { if (en && en.id && en.snapshot && !ids.has(en.id)) existing.push(en); });
+        writeLibrary(existing);
+        renderLibrary();
+      } catch { alert('Invalid library file.'); }
+      libImportFile.value = '';
+    };
+    reader.readAsText(file);
+  });
+
   document.querySelectorAll('.tool-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.blocks.push(createBlock(btn.dataset.type));
@@ -1007,7 +1226,7 @@
   }
 
   function blockLabel(type) {
-    return type === 'procedure' ? 'Procedure' : type === 'checklist' ? 'Checklist' : type === 'table' ? 'Table' : 'Media';
+    return type === 'procedure' ? 'Procedure' : type === 'checklist' ? 'Checklist' : type === 'table' ? 'Table' : type === 'rating' ? 'Rating' : type === 'field' ? 'Field' : 'Media';
   }
 
   function renderBlockEditor(block) {
@@ -1066,6 +1285,36 @@
       html += '<button class="add-link" data-add-row>+ Add row</button>';
       html += '<button class="add-link" data-add-col>+ Add column</button>';
       html += '</div></div>';
+      return html;
+    }
+    if (block.type === 'rating') {
+      let html = '';
+      block.items.forEach((item) => {
+        html += `
+          <div class="item-row">
+            <input type="text" value="${esc(item.label)}" placeholder="Skill or standard" data-rating-label="${item.id}">
+            <select data-rating-stars="${item.id}" style="border:1px solid var(--stone-200); border-radius:4px; padding:6px;">
+              ${[1,2,3,4,5].map((n) => `<option value="${n}" ${item.stars === n ? 'selected' : ''}>${n}&#9733;</option>`).join('')}
+            </select>
+            <button class="row-remove" data-remove-rating="${item.id}">&times;</button>
+          </div>`;
+      });
+      html += `<button class="add-link" data-add-rating>+ Add rating</button>`;
+      return html;
+    }
+    if (block.type === 'field') {
+      let html = '';
+      block.items.forEach((item) => {
+        html += `
+          <div class="item-row">
+            <input type="text" value="${esc(item.label)}" placeholder="Field label" data-field-label="${item.id}">
+            <select data-field-type="${item.id}" style="border:1px solid var(--stone-200); border-radius:4px; padding:6px;">
+              ${['text','date','time','number','signature'].map((t) => `<option value="${t}" ${item.fieldType === t ? 'selected' : ''}>${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join('')}
+            </select>
+            <button class="row-remove" data-remove-field="${item.id}">&times;</button>
+          </div>`;
+      });
+      html += `<button class="add-link" data-add-field>+ Add field</button>`;
       return html;
     }
     return `
@@ -1241,6 +1490,66 @@
         });
       }
 
+      if (block.type === 'rating') {
+        wrap.querySelectorAll('[data-rating-label]').forEach((input) => {
+          input.addEventListener('click', (e) => e.stopPropagation());
+          input.addEventListener('input', (e) => {
+            block.items.find((it) => it.id === e.target.dataset.ratingLabel).label = e.target.value;
+            renderPreview();
+          });
+        });
+        wrap.querySelectorAll('[data-rating-stars]').forEach((sel) => {
+          sel.addEventListener('click', (e) => e.stopPropagation());
+          sel.addEventListener('change', (e) => {
+            block.items.find((it) => it.id === e.target.dataset.ratingStars).stars = parseInt(e.target.value, 10);
+            renderPreview();
+          });
+        });
+        wrap.querySelectorAll('[data-remove-rating]').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            block.items = block.items.filter((it) => it.id !== btn.dataset.removeRating);
+            renderBlocks(); renderPreview();
+          });
+        });
+        const addRatingBtn = wrap.querySelector('[data-add-rating]');
+        if (addRatingBtn) addRatingBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          block.items.push({ id: uid(), label: '', stars: 3 });
+          renderBlocks(); renderPreview();
+        });
+      }
+
+      if (block.type === 'field') {
+        wrap.querySelectorAll('[data-field-label]').forEach((input) => {
+          input.addEventListener('click', (e) => e.stopPropagation());
+          input.addEventListener('input', (e) => {
+            block.items.find((it) => it.id === e.target.dataset.fieldLabel).label = e.target.value;
+            renderPreview();
+          });
+        });
+        wrap.querySelectorAll('[data-field-type]').forEach((sel) => {
+          sel.addEventListener('click', (e) => e.stopPropagation());
+          sel.addEventListener('change', (e) => {
+            block.items.find((it) => it.id === e.target.dataset.fieldType).fieldType = e.target.value;
+            renderPreview();
+          });
+        });
+        wrap.querySelectorAll('[data-remove-field]').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            block.items = block.items.filter((it) => it.id !== btn.dataset.removeField);
+            renderBlocks(); renderPreview();
+          });
+        });
+        const addFieldBtn = wrap.querySelector('[data-add-field]');
+        if (addFieldBtn) addFieldBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          block.items.push({ id: uid(), label: '', fieldType: 'text' });
+          renderBlocks(); renderPreview();
+        });
+      }
+
       if (block.type === 'media') {
         const mediaInput = wrap.querySelector('[data-media-url]');
         mediaInput.addEventListener('click', (e) => e.stopPropagation());
@@ -1394,6 +1703,42 @@
             tr.appendChild(td);
           });
           tbody.appendChild(tr);
+        });
+        blocksEl.appendChild(section);
+      }
+
+      if (block.type === 'rating') {
+        const items = block.items.filter((it) => it.label.trim());
+        if (!items.length) return;
+        const section = document.createElement('div');
+        section.className = 'sop-section';
+        section.innerHTML = `<div class="sop-eyebrow">Competency</div>`;
+        section.style.fontFamily = state.styles.checklist.fontFamily;
+        section.style.color = state.styles.checklist.textColor;
+        section.style.fontSize = state.styles.checklist.fontSize + 'px';
+        items.forEach((item) => {
+          const row = document.createElement('div');
+          row.className = 'sop-rating-row';
+          row.innerHTML = `<span>${esc(item.label)}</span><span class="sop-rating-stars">${'\u2605'.repeat(item.stars)}${'\u2606'.repeat(5 - item.stars)}</span>`;
+          section.appendChild(row);
+        });
+        blocksEl.appendChild(section);
+      }
+
+      if (block.type === 'field') {
+        const items = block.items.filter((it) => it.label.trim());
+        if (!items.length) return;
+        const section = document.createElement('div');
+        section.className = 'sop-section';
+        section.innerHTML = `<div class="sop-eyebrow">Record</div>`;
+        section.style.fontFamily = state.styles.checklist.fontFamily;
+        section.style.color = state.styles.checklist.textColor;
+        section.style.fontSize = state.styles.checklist.fontSize + 'px';
+        items.forEach((item) => {
+          const row = document.createElement('div');
+          row.className = 'sop-field-row';
+          row.innerHTML = `<span class="sop-field-label">${esc(item.label)}</span><span class="sop-field-line"></span><span class="sop-field-hint">${esc(item.fieldType)}</span>`;
+          section.appendChild(row);
         });
         blocksEl.appendChild(section);
       }
