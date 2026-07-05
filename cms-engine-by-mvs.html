@@ -466,6 +466,49 @@
   .tpl-card-desc { font-size: 12px; color: var(--stone-500); }
   .tpl-modal-close { border: none; background: none; color: var(--stone-500); font-size: 13px; cursor: pointer; padding: 0; }
   .tpl-modal-close:hover { color: var(--stone-900); }
+
+  /* Tooltips (CSS-only via data-tip) */
+  [data-tip] { position: relative; }
+  [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 0; bottom: calc(100% + 6px);
+    background: var(--stone-900);
+    color: #fff;
+    font-size: 11px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    line-height: 1.4;
+    padding: 6px 10px;
+    border-radius: 4px;
+    max-width: 240px;
+    width: max-content;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    z-index: 500;
+    white-space: normal;
+  }
+  [data-tip]:hover::after { opacity: 1; }
+
+  /* Helper notes */
+  .helper-note {
+    font-size: 11px;
+    color: var(--stone-400);
+    line-height: 1.5;
+    margin: -8px 0 16px 0;
+  }
+  .empty-note {
+    border: 1px dashed var(--stone-200);
+    border-radius: var(--radius-default);
+    padding: 16px;
+    font-size: 12px;
+    color: var(--stone-400);
+    text-align: center;
+    line-height: 1.5;
+  }
 </style>
 </head>
 <body>
@@ -476,14 +519,14 @@
     <div class="eyebrow">CMS Engine by MvS</div>
     <h2>Service Standard</h2>
     <div class="orientation-toggle" id="orientation-toggle">
-      <button data-orientation="portrait">Portrait</button>
-      <button data-orientation="landscape" class="active">Landscape</button>
+      <button data-orientation="portrait" data-tip="Narrow card, single-column procedure.">Portrait</button>
+      <button data-orientation="landscape" class="active" data-tip="Wide card, two-column procedure.">Landscape</button>
     </div>
-    <button class="tool-btn" id="open-templates-btn" style="margin-bottom:20px;"><span class="tool-icon">&#9776;</span>Templates</button>
+    <button class="tool-btn" id="open-templates-btn" style="margin-bottom:20px;" data-tip="Start from a preset. Replaces current title, purpose, scope and blocks."><span class="tool-icon">&#9776;</span>Templates</button>
 
     <div class="section-label" style="margin-top:0;">Header</div>
     <div class="field">
-      <label>Logo URL</label>
+      <label data-tip="Paste a direct image link (PNG/JPG/SVG). Falls back to a brass square if empty or broken.">Logo URL</label>
       <input id="in-company-logo" type="text" placeholder="https://example.com/logo.png">
     </div>
     <div class="field">
@@ -501,7 +544,7 @@
 
     <div class="section-label">Document Info</div>
     <div class="field">
-      <label>SOP Number</label>
+      <label data-tip="Document reference, e.g. #021. Only filled fields appear on the document.">SOP Number</label>
       <input id="in-sop-number" type="text" placeholder="#001">
     </div>
     <div class="field">
@@ -522,7 +565,7 @@
     </div>
     <div class="field" style="display:flex; align-items:center; gap:8px;">
       <input type="checkbox" id="in-show-prepared-by" style="width:auto;">
-      <label style="margin:0;">Show &quot;Prepared By&quot;</label>
+      <label style="margin:0;" data-tip="Adds an author field to the document info grid — useful for spot-check lists.">Show &quot;Prepared By&quot;</label>
     </div>
     <div class="field" id="prepared-by-field" style="display:none;">
       <label>Prepared By</label>
@@ -535,17 +578,17 @@
       <input id="in-title" type="text" value="Table Setup">
     </div>
     <div class="field">
-      <label>Purpose</label>
+      <label data-tip="Why this standard exists — appears directly under the title.">Purpose</label>
       <textarea id="in-standard" rows="4">Tables must be set precisely to luxury standards to ensure guest comfort.</textarea>
     </div>
     <div class="field">
-      <label>Scope</label>
+      <label data-tip="Who and what this procedure covers. Hidden from the document when left empty.">Scope</label>
       <textarea id="in-scope" rows="3" placeholder="Who and what this procedure applies to."></textarea>
     </div>
 
     <div class="section-label" style="margin-top:0;">Style</div>
     <div class="field">
-      <label>Section</label>
+      <label data-tip="Choose which part of the document the font and colour settings below apply to.">Section</label>
       <select id="in-style-target">
         <option value="title" selected>Title</option>
         <option value="standard">Standard</option>
@@ -589,6 +632,7 @@
     </div>
 
     <div class="section-label">Add Block</div>
+    <div class="helper-note">Blocks appear on the document in order. Hover a block below to reorder or delete it.</div>
     <div class="toolbar">
       <button class="tool-btn" data-type="procedure"><span class="tool-icon">01</span>Procedure</button>
       <button class="tool-btn" data-type="checklist"><span class="tool-icon">&#9744;</span>Checklist</button>
@@ -689,6 +733,7 @@
   };
 
   const uid = () => 'id-' + Math.random().toString(36).slice(2, 10);
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   function createBlock(type) {
     if (type === 'procedure') return { id: uid(), type, steps: [{ title: '', bullets: [''] }] };
@@ -972,13 +1017,13 @@
         html += `<div class="proc-editor-step" data-step="${si}">`;
         html += `<div class="proc-editor-step-header">`;
         html += `<span class="step-num">${String(si + 1).padStart(2, '0')}</span>`;
-        html += `<input type="text" class="proc-editor-title-input" placeholder="Step title" value="${step.title.replace(/"/g, '&quot;')}" data-step-title="${si}">`;
+        html += `<input type="text" class="proc-editor-title-input" placeholder="Step title" value="${esc(step.title)}" data-step-title="${si}">`;
         html += `<button class="row-remove" data-remove-step="${si}">&times;</button>`;
         html += `</div>`;
         step.bullets.forEach((bullet, bi) => {
           html += `
             <div class="proc-editor-bullet-row">
-              <input type="text" placeholder="Bullet point" value="${bullet.replace(/"/g, '&quot;')}" data-bullet-step="${si}" data-bullet-index="${bi}">
+              <input type="text" placeholder="Bullet point" value="${esc(bullet)}" data-bullet-step="${si}" data-bullet-index="${bi}">
               <button class="row-remove" data-remove-bullet-step="${si}" data-remove-bullet-index="${bi}">&times;</button>
             </div>`;
         });
@@ -994,7 +1039,7 @@
         html += `
           <div class="item-row">
             <input type="checkbox" ${item.checked ? 'checked' : ''} data-item-check="${item.id}">
-            <input type="text" value="${item.text.replace(/"/g, '&quot;')}" placeholder="Checklist item" data-item-text="${item.id}">
+            <input type="text" value="${esc(item.text)}" placeholder="Checklist item" data-item-text="${item.id}">
             <button class="row-remove" data-remove-item="${item.id}">&times;</button>
           </div>`;
       });
@@ -1005,14 +1050,14 @@
       let html = '<div class="table-editor">';
       html += '<div class="table-editor-row">';
       block.headers.forEach((h, ci) => {
-        html += `<input type="text" class="table-cell-input" value="${h.replace(/"/g, '&quot;')}" placeholder="Header" data-header-index="${ci}">`;
+        html += `<input type="text" class="table-cell-input" value="${esc(h)}" placeholder="Header" data-header-index="${ci}">`;
       });
       html += `<button class="row-remove" data-remove-col>&times;</button>`;
       html += '</div>';
       block.rows.forEach((row, ri) => {
         html += '<div class="table-editor-row">';
         row.forEach((cell, ci) => {
-          html += `<input type="text" class="table-cell-input" value="${cell.replace(/"/g, '&quot;')}" data-row="${ri}" data-col="${ci}">`;
+          html += `<input type="text" class="table-cell-input" value="${esc(cell)}" data-row="${ri}" data-col="${ci}">`;
         });
         html += `<button class="row-remove" data-remove-row="${ri}">&times;</button>`;
         html += '</div>';
@@ -1024,14 +1069,21 @@
       return html;
     }
     return `
-      <input class="media-input" type="text" placeholder="Image URL" value="${(block.content || '').replace(/"/g, '&quot;')}" data-media-url style="margin-bottom:6px;">
-      <input class="media-input" type="text" placeholder="Alt text" value="${(block.alt || '').replace(/"/g, '&quot;')}" data-media-alt style="margin-bottom:6px;">
-      <input class="media-input" type="text" placeholder="Caption" value="${(block.caption || '').replace(/"/g, '&quot;')}" data-media-caption>
+      <input class="media-input" type="text" placeholder="Image URL" value="${esc(block.content)}" data-media-url style="margin-bottom:6px;">
+      <input class="media-input" type="text" placeholder="Alt text" value="${esc(block.alt)}" data-media-alt style="margin-bottom:6px;">
+      <input class="media-input" type="text" placeholder="Caption" value="${esc(block.caption)}" data-media-caption>
     `;
   }
 
   function renderBlocks() {
     blockListEl.innerHTML = '';
+    if (!state.blocks.length) {
+      const note = document.createElement('div');
+      note.className = 'empty-note';
+      note.textContent = 'No blocks yet. Use the buttons above to add a Procedure, Checklist, Table or Media block — or pick a Template to start faster.';
+      blockListEl.appendChild(note);
+      return;
+    }
     state.blocks.forEach((block, index) => {
       const wrap = document.createElement('div');
       wrap.className = 'block' + (selectedId === block.id ? ' selected' : '');
@@ -1258,7 +1310,7 @@
     filledMeta.forEach(([label, value]) => {
       const item = document.createElement('div');
       item.className = 'cms-meta-item';
-      item.innerHTML = `<div class="label">${label}</div><div class="value">${value}</div>`;
+      item.innerHTML = `<div class="label">${esc(label)}</div><div class="value">${esc(value)}</div>`;
       metaGridEl.appendChild(item);
     });
 
@@ -1292,7 +1344,7 @@
           stepDiv.style.color = state.styles.procedure.textColor;
           stepDiv.style.fontSize = state.styles.procedure.fontSize + 'px';
           const bullets = step.bullets.filter((b) => b.trim());
-          stepDiv.innerHTML = `<div class="proc-step-title">${String(i + 1).padStart(2, '0')} — ${step.title || 'Untitled step'}</div><ul>${bullets.map((b) => `<li>${b}</li>`).join('')}</ul>`;
+          stepDiv.innerHTML = `<div class="proc-step-title">${String(i + 1).padStart(2, '0')} — ${esc(step.title) || 'Untitled step'}</div><ul>${bullets.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>`;
           grid.appendChild(stepDiv);
         });
         blocksEl.appendChild(section);
@@ -1349,9 +1401,9 @@
       if (block.type === 'media' && block.content.trim()) {
         const div = document.createElement('div');
         div.className = 'sop-media';
-        const altText = (block.alt || 'SOP media').replace(/"/g, '&quot;');
+        const altText = esc(block.alt || 'SOP media');
         const captionHtml = block.caption && block.caption.trim()
-          ? `<div class="sop-media-caption">${block.caption}</div>`
+          ? `<div class="sop-media-caption">${esc(block.caption)}</div>`
           : '';
         div.innerHTML = `<img src="${block.content}" alt="${altText}" onerror="this.closest('.sop-media').remove()">${captionHtml}`;
         blocksEl.appendChild(div);
