@@ -97,11 +97,15 @@ exports.handler = async (event) => {
       return json(200, { valid: await verifyPasscode(body.department, body.passcode) });
     }
 
-    // one-time admin seeding, protected by ADMIN_SECRET env var
-    if (method === 'POST' && segments.length === 2 && segments[0] === 'admin' && segments[1] === 'seed-passcode') {
+    // one-time admin seeding, protected by ADMIN_SECRET env var.
+    // Accepts GET with query params as a bootstrap convenience (paste a URL in a browser / fetch it),
+    // in addition to the header-based POST form for scripted use.
+    if ((method === 'POST' || method === 'GET') && segments.length === 2 && segments[0] === 'admin' && segments[1] === 'seed-passcode') {
       const adminSecret = process.env.ADMIN_SECRET;
-      if (!adminSecret || event.headers['x-admin-secret'] !== adminSecret) return json(401, { error: 'unauthorized' });
-      const { department, passcode } = body;
+      const suppliedSecret = method === 'GET' ? qs.secret : event.headers['x-admin-secret'];
+      if (!adminSecret || suppliedSecret !== adminSecret) return json(401, { error: 'unauthorized' });
+      const department = method === 'GET' ? qs.department : body.department;
+      const passcode = method === 'GET' ? qs.passcode : body.passcode;
       if (!isValidDepartment(department) || typeof passcode !== 'string' || passcode.length < 4) {
         return json(400, { error: 'invalid_input' });
       }
