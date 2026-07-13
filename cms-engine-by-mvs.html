@@ -752,6 +752,10 @@
       <label>Your name (optional)</label>
       <input type="text" id="passcode-modal-author" placeholder="e.g. Maria">
     </div>
+    <div class="field" id="passcode-modal-dept-label-field">
+      <label>Custom label (optional)</label>
+      <input type="text" id="passcode-modal-dept-label" placeholder="e.g. Front of House" maxlength="100">
+    </div>
     <div class="field">
       <label>Department passcode</label>
       <input type="password" id="passcode-modal-passcode" placeholder="Enter passcode">
@@ -1259,13 +1263,16 @@
   const passcodeModalDeptSel = document.getElementById('passcode-modal-department');
   const passcodeModalAuthorField = document.getElementById('passcode-modal-author-field');
   const passcodeModalAuthorIn = document.getElementById('passcode-modal-author');
+  const passcodeModalDeptLabelField = document.getElementById('passcode-modal-dept-label-field');
+  const passcodeModalDeptLabelIn = document.getElementById('passcode-modal-dept-label');
   const passcodeModalPasscodeIn = document.getElementById('passcode-modal-passcode');
   const passcodeModalError = document.getElementById('passcode-modal-error');
   const passcodeModalCancel = document.getElementById('passcode-modal-cancel');
   const passcodeModalConfirm = document.getElementById('passcode-modal-confirm');
   let passcodeModalConfirmHandler = null;
+  let passcodeModalDeptLabelActive = false;
 
-  async function openPasscodeModal({ title, lockedDepartment = null, showAuthor = false, onConfirm }) {
+  async function openPasscodeModal({ title, lockedDepartment = null, showAuthor = false, showDeptLabel = false, onConfirm }) {
     const departments = await fetchDepartments();
     if (!departments.length) {
       alert('Could not load departments from the server. Check Server Settings and try again.');
@@ -1279,6 +1286,11 @@
     passcodeModalDeptSel.innerHTML = departments.map((d) => `<option value="${esc(d.key)}">${esc(d.label)}</option>`).join('');
     if (lockedDepartment) { passcodeModalDeptSel.value = lockedDepartment; passcodeModalDeptSel.disabled = true; }
     else { passcodeModalDeptSel.disabled = false; }
+    passcodeModalDeptLabelActive = showDeptLabel;
+    passcodeModalDeptLabelField.style.display = showDeptLabel ? '' : 'none';
+    passcodeModalDeptLabelIn.value = showDeptLabel
+      ? (localStorage.getItem('cms-dept-label-' + passcodeModalDeptSel.value) || '')
+      : '';
     passcodeModalConfirmHandler = onConfirm;
     passcodeModal.classList.add('open');
     passcodeModalPasscodeIn.focus();
@@ -1289,6 +1301,10 @@
   }
   passcodeModalCancel.addEventListener('click', closePasscodeModal);
   passcodeModal.addEventListener('click', (e) => { if (e.target === passcodeModal) closePasscodeModal(); });
+  passcodeModalDeptSel.addEventListener('change', () => {
+    if (!passcodeModalDeptLabelActive) return;
+    passcodeModalDeptLabelIn.value = localStorage.getItem('cms-dept-label-' + passcodeModalDeptSel.value) || '';
+  });
   passcodeModalConfirm.addEventListener('click', async () => {
     if (!passcodeModalConfirmHandler) return;
     const passcode = passcodeModalPasscodeIn.value;
@@ -1299,11 +1315,13 @@
     }
     const department = passcodeModalDeptSel.value;
     const author = passcodeModalAuthorIn.value.trim();
+    const deptLabel = passcodeModalDeptLabelIn.value.trim().slice(0, 100);
     passcodeModalConfirm.disabled = true;
-    const result = await passcodeModalConfirmHandler({ department, passcode, author });
+    const result = await passcodeModalConfirmHandler({ department, passcode, author, deptLabel });
     passcodeModalConfirm.disabled = false;
     if (result && result.ok) {
       if (author) localStorage.setItem('cms-author-name', author);
+      if (passcodeModalDeptLabelActive && deptLabel) localStorage.setItem('cms-dept-label-' + department, deptLabel);
       closePasscodeModal();
     } else {
       passcodeModalError.textContent = (result && result.message) || 'Something went wrong. Try again.';
@@ -1372,7 +1390,7 @@
       card.type = 'button';
       card.className = 'tpl-card';
       card.style.position = 'relative';
-      card.innerHTML = `<div class="tpl-card-name">${esc(entry.name)}</div><div class="tpl-card-desc">Saved ${new Date(entry.updated_at).toLocaleDateString()}${entry.created_by ? ' by ' + esc(entry.created_by) : ''}</div><span class="tpl-card-dept">${esc(departmentLabel(entry.department))}</span><span class="row-remove" data-lib-delete="${entry.id}" style="position:absolute; top:6px; right:6px;">&times;</span>`;
+      card.innerHTML = `<div class="tpl-card-name">${esc(entry.name)}</div><div class="tpl-card-desc">Saved ${new Date(entry.updated_at).toLocaleDateString()}${entry.created_by ? ' by ' + esc(entry.created_by) : ''}</div><span class="tpl-card-dept">${esc(entry.department_label || departmentLabel(entry.department))}</span><span class="row-remove" data-lib-delete="${entry.id}" style="position:absolute; top:6px; right:6px;">&times;</span>`;
       card.addEventListener('click', async (e) => {
         if (e.target.dataset.libDelete) return;
         const full = await apiFetch(`/api/v1/entries/${entry.id}`);
@@ -1424,10 +1442,11 @@
     openPasscodeModal({
       title: 'Save to Library',
       showAuthor: true,
-      onConfirm: async ({ department, passcode, author }) => {
+      showDeptLabel: true,
+      onConfirm: async ({ department, passcode, author, deptLabel }) => {
         const res = await apiFetch('/api/v1/entries', {
           method: 'POST',
-          body: JSON.stringify({ name: name.trim(), department, created_by: author, passcode, snapshot })
+          body: JSON.stringify({ name: name.trim(), department, created_by: author, department_label: deptLabel, passcode, snapshot })
         });
         if (res.ok) { openLibModal(); return { ok: true }; }
         if (res.error === 'invalid_passcode') return { ok: false, message: 'Incorrect passcode for that department.' };
@@ -1474,7 +1493,7 @@
         title: `Import ${imported.length} document${imported.length === 1 ? '' : 's'}`,
         onConfirm: async ({ department, passcode }) => {
           const entries = imported.map((en) => ({
-            id: en.id, name: en.name, snapshot: en.snapshot, created_by: en.created_by, savedAt: en.savedAt || en.created_at
+            id: en.id, name: en.name, snapshot: en.snapshot, created_by: en.created_by, department_label: en.department_label, savedAt: en.savedAt || en.created_at
           }));
           const res = await apiFetch('/api/v1/entries/import', {
             method: 'POST',
