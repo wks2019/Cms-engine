@@ -18,17 +18,11 @@ const DEPARTMENTS = [
 const DEPARTMENT_KEYS = new Set(DEPARTMENTS.map((d) => d.key));
 const MAX_NAME_LENGTH = 200;
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type,X-Admin-Secret'
-};
-
 function json(statusCode, body) {
-  return { statusCode, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }, body: JSON.stringify(body) };
+  return { statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
 }
 function noContent() {
-  return { statusCode: 204, headers: CORS_HEADERS, body: '' };
+  return { statusCode: 204, body: '' };
 }
 function isValidDepartment(department) {
   return typeof department === 'string' && DEPARTMENT_KEYS.has(department);
@@ -70,9 +64,10 @@ async function listEntries({ department, q }) {
 }
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS_HEADERS, body: '' };
-
-  const path = event.path.replace(/^\/\.netlify\/functions\/api/, '').replace(/\/+$/, '') || '/';
+  let path = event.path;
+  path = path.replace(/^\/\.netlify\/functions\/api/, '');
+  path = path.replace(/^\/api\/v1/, '');
+  path = path.replace(/\/+$/, '') || '/';
   const segments = path.split('/').filter(Boolean);
   const method = event.httpMethod;
   const qs = event.queryStringParameters || {};
