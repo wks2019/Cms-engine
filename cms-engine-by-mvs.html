@@ -470,6 +470,31 @@
   .tpl-card:hover { border-color: var(--brass); background: #FBF6EC; }
   .tpl-card-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
   .tpl-card-desc { font-size: 12px; color: var(--stone-500); }
+  .tpl-card-dept {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--brass);
+    border: 1px solid var(--brass);
+    border-radius: 3px;
+    padding: 1px 6px;
+    margin-top: 6px;
+  }
+  .lib-filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .lib-filter-row select, .lib-filter-row input {
+    border: 1px solid var(--stone-200);
+    background: #fff;
+    padding: 8px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  .lib-filter-row select { flex: 1; min-width: 130px; }
+  .lib-filter-row input { flex: 2; min-width: 160px; }
+  .lib-status-note { font-size: 12px; color: var(--stone-500); margin-bottom: 12px; }
+  .lib-status-note.error { color: var(--token-danger); }
   .tpl-modal-close { border: none; background: none; color: var(--stone-500); font-size: 13px; cursor: pointer; padding: 0; }
   .tpl-modal-close:hover { color: var(--stone-900); }
 
@@ -699,12 +724,57 @@
 <div class="tpl-modal-overlay" id="lib-modal">
   <div class="tpl-modal">
     <h3>My Library</h3>
+    <div class="lib-filter-row">
+      <select id="lib-dept-filter"></select>
+      <input type="text" id="lib-search" placeholder="Search by name...">
+    </div>
+    <div class="lib-status-note" id="lib-status-note" style="display:none;"></div>
     <div class="tpl-grid" id="lib-grid"></div>
-    <div style="display:flex; gap:12px; align-items:center;">
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; row-gap:8px;">
       <button class="tpl-modal-close" id="lib-modal-close">Close</button>
+      <button class="add-link" id="lib-sync-local" style="display:none;">Sync Local Library</button>
       <button class="add-link" id="lib-export">Export JSON</button>
       <button class="add-link" id="lib-import">Import JSON</button>
+      <button class="add-link" id="lib-server-settings">Server Settings</button>
       <input type="file" id="lib-import-file" accept=".json" style="display:none;">
+    </div>
+  </div>
+</div>
+
+<div class="tpl-modal-overlay" id="passcode-modal">
+  <div class="tpl-modal" style="width:360px;">
+    <h3 id="passcode-modal-title">Save to Library</h3>
+    <div class="field" id="passcode-modal-department-field">
+      <label>Department</label>
+      <select id="passcode-modal-department"></select>
+    </div>
+    <div class="field" id="passcode-modal-author-field">
+      <label>Your name (optional)</label>
+      <input type="text" id="passcode-modal-author" placeholder="e.g. Maria">
+    </div>
+    <div class="field">
+      <label>Department passcode</label>
+      <input type="password" id="passcode-modal-passcode" placeholder="Enter passcode">
+    </div>
+    <div class="lib-status-note error" id="passcode-modal-error" style="display:none;"></div>
+    <div class="color-modal-actions">
+      <button class="color-modal-cancel" id="passcode-modal-cancel">Cancel</button>
+      <button class="color-modal-set" id="passcode-modal-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="tpl-modal-overlay" id="server-modal">
+  <div class="tpl-modal" style="width:360px;">
+    <h3>Server Settings</h3>
+    <div class="field">
+      <label>Library server URL</label>
+      <input type="text" id="server-modal-url" placeholder="https://your-server.example.com">
+    </div>
+    <div class="helper-note" style="margin-top:-4px;">All PCs at this location should point at the same server URL to share one library. Ask whoever set up the server for this address.</div>
+    <div class="color-modal-actions">
+      <button class="color-modal-cancel" id="server-modal-cancel">Cancel</button>
+      <button class="color-modal-set" id="server-modal-save">Save</button>
     </div>
   </div>
 </div>
@@ -1086,15 +1156,72 @@
   document.getElementById('tpl-modal-close').addEventListener('click', closeTplModal);
   tplModal.addEventListener('click', (e) => { if (e.target === tplModal) closeTplModal(); });
 
-  /* ---- Library (localStorage) ---- */
+  /* ---- Library (shared server, with local backup/migration path) ---- */
+  const SERVER_URL_KEY = 'cms-server-url';
   const LIB_KEY = 'cms-library';
+  const LIB_SYNCED_KEY = 'cms-library-synced-at';
   const libModal = document.getElementById('lib-modal');
   const libGrid = document.getElementById('lib-grid');
+  const libDeptFilter = document.getElementById('lib-dept-filter');
+  const libSearchIn = document.getElementById('lib-search');
+  const libStatusNote = document.getElementById('lib-status-note');
+  const libSyncLocalBtn = document.getElementById('lib-sync-local');
 
-  function readLibrary() {
+  let departmentsCache = null;
+
+  function getServerUrl() {
+    const stored = (localStorage.getItem(SERVER_URL_KEY) || '').trim().replace(/\/+$/, '');
+    if (stored) return stored;
+    /* Zero-config default: if this page itself is hosted somewhere real (e.g. the Netlify
+       site, which also serves /api/v1/* via a function), use that as the server automatically.
+       Excluded for localhost so local static-file testing still requires an explicit Server URL. */
+    const { protocol, hostname, origin } = window.location;
+    if (/^https?:$/.test(protocol) && hostname !== 'localhost' && hostname !== '127.0.0.1') return origin;
+    return '';
+  }
+  function setServerUrl(url) {
+    localStorage.setItem(SERVER_URL_KEY, url.trim().replace(/\/+$/, ''));
+  }
+  function toQuery(params) {
+    const usp = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => { if (v) usp.set(k, v); });
+    const s = usp.toString();
+    return s ? '?' + s : '';
+  }
+
+  async function apiFetch(path, options = {}) {
+    const base = getServerUrl();
+    if (!base) return { ok: false, error: 'no_server' };
+    try {
+      const res = await fetch(base + path, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+      });
+      if (res.status === 204) return { ok: true, data: null };
+      let data = null;
+      try { data = await res.json(); } catch {}
+      if (!res.ok) return { ok: false, status: res.status, error: (data && data.error) || 'request_failed' };
+      return { ok: true, data };
+    } catch {
+      return { ok: false, error: 'network' };
+    }
+  }
+
+  async function fetchDepartments() {
+    if (departmentsCache) return departmentsCache;
+    const res = await apiFetch('/api/v1/departments');
+    departmentsCache = res.ok ? res.data : [];
+    return departmentsCache;
+  }
+  function departmentLabel(key) {
+    const d = (departmentsCache || []).find((d) => d.key === key);
+    return d ? d.label : key;
+  }
+
+  /* Legacy per-browser library: kept only as an offline backup / one-time migration source. */
+  function readLocalBackup() {
     try { return JSON.parse(localStorage.getItem(LIB_KEY)) || []; } catch { return []; }
   }
-  function writeLibrary(entries) { localStorage.setItem(LIB_KEY, JSON.stringify(entries)); }
 
   function snapshotState() {
     return JSON.parse(JSON.stringify({
@@ -1126,14 +1253,117 @@
     renderPreview();
   }
 
-  function renderLibrary() {
-    const entries = readLibrary();
+  /* ---- Passcode modal (shared by save / delete / import / sync) ---- */
+  const passcodeModal = document.getElementById('passcode-modal');
+  const passcodeModalTitle = document.getElementById('passcode-modal-title');
+  const passcodeModalDeptSel = document.getElementById('passcode-modal-department');
+  const passcodeModalAuthorField = document.getElementById('passcode-modal-author-field');
+  const passcodeModalAuthorIn = document.getElementById('passcode-modal-author');
+  const passcodeModalPasscodeIn = document.getElementById('passcode-modal-passcode');
+  const passcodeModalError = document.getElementById('passcode-modal-error');
+  const passcodeModalCancel = document.getElementById('passcode-modal-cancel');
+  const passcodeModalConfirm = document.getElementById('passcode-modal-confirm');
+  let passcodeModalConfirmHandler = null;
+
+  async function openPasscodeModal({ title, lockedDepartment = null, showAuthor = false, onConfirm }) {
+    const departments = await fetchDepartments();
+    if (!departments.length) {
+      alert('Could not load departments from the server. Check Server Settings and try again.');
+      return;
+    }
+    passcodeModalTitle.textContent = title;
+    passcodeModalError.style.display = 'none';
+    passcodeModalPasscodeIn.value = '';
+    passcodeModalAuthorIn.value = localStorage.getItem('cms-author-name') || '';
+    passcodeModalAuthorField.style.display = showAuthor ? '' : 'none';
+    passcodeModalDeptSel.innerHTML = departments.map((d) => `<option value="${esc(d.key)}">${esc(d.label)}</option>`).join('');
+    if (lockedDepartment) { passcodeModalDeptSel.value = lockedDepartment; passcodeModalDeptSel.disabled = true; }
+    else { passcodeModalDeptSel.disabled = false; }
+    passcodeModalConfirmHandler = onConfirm;
+    passcodeModal.classList.add('open');
+    passcodeModalPasscodeIn.focus();
+  }
+  function closePasscodeModal() {
+    passcodeModal.classList.remove('open');
+    passcodeModalConfirmHandler = null;
+  }
+  passcodeModalCancel.addEventListener('click', closePasscodeModal);
+  passcodeModal.addEventListener('click', (e) => { if (e.target === passcodeModal) closePasscodeModal(); });
+  passcodeModalConfirm.addEventListener('click', async () => {
+    if (!passcodeModalConfirmHandler) return;
+    const passcode = passcodeModalPasscodeIn.value;
+    if (!passcode) {
+      passcodeModalError.textContent = 'Enter the department passcode.';
+      passcodeModalError.style.display = '';
+      return;
+    }
+    const department = passcodeModalDeptSel.value;
+    const author = passcodeModalAuthorIn.value.trim();
+    passcodeModalConfirm.disabled = true;
+    const result = await passcodeModalConfirmHandler({ department, passcode, author });
+    passcodeModalConfirm.disabled = false;
+    if (result && result.ok) {
+      if (author) localStorage.setItem('cms-author-name', author);
+      closePasscodeModal();
+    } else {
+      passcodeModalError.textContent = (result && result.message) || 'Something went wrong. Try again.';
+      passcodeModalError.style.display = '';
+    }
+  });
+
+  /* ---- Server settings modal ---- */
+  const serverModal = document.getElementById('server-modal');
+  const serverModalUrlIn = document.getElementById('server-modal-url');
+  function openServerModal() {
+    serverModalUrlIn.value = getServerUrl();
+    serverModal.classList.add('open');
+    serverModalUrlIn.focus();
+  }
+  function closeServerModal() { serverModal.classList.remove('open'); }
+  document.getElementById('lib-server-settings').addEventListener('click', openServerModal);
+  document.getElementById('server-modal-cancel').addEventListener('click', closeServerModal);
+  serverModal.addEventListener('click', (e) => { if (e.target === serverModal) closeServerModal(); });
+  document.getElementById('server-modal-save').addEventListener('click', () => {
+    setServerUrl(serverModalUrlIn.value);
+    departmentsCache = null;
+    closeServerModal();
+    if (libModal.classList.contains('open')) openLibModal();
+  });
+
+  /* ---- Library list rendering ---- */
+  async function renderLibrary() {
+    passcodeModalError.style.display = 'none';
+    libStatusNote.style.display = 'none';
+    libStatusNote.classList.remove('error');
+
+    if (!getServerUrl()) {
+      libGrid.innerHTML = '';
+      libStatusNote.textContent = 'No library server configured yet. Open Server Settings to connect to this location\'s shared library.';
+      libStatusNote.classList.add('error');
+      libStatusNote.style.display = '';
+      return;
+    }
+
+    libGrid.innerHTML = '<div class="empty-note" style="grid-column:1 / -1;">Loading...</div>';
+    const department = libDeptFilter.value || undefined;
+    const q = libSearchIn.value.trim() || undefined;
+    const res = await apiFetch('/api/v1/entries' + toQuery({ department, q }));
+
+    if (!res.ok) {
+      libGrid.innerHTML = '';
+      libStatusNote.textContent = `Can't reach the library server at ${getServerUrl()}. Check Server Settings, or use Export/Import for offline backup.`;
+      libStatusNote.classList.add('error');
+      libStatusNote.style.display = '';
+      return;
+    }
+
+    const entries = res.data;
     libGrid.innerHTML = '';
     if (!entries.length) {
       const note = document.createElement('div');
       note.className = 'empty-note';
       note.style.gridColumn = '1 / -1';
-      note.textContent = 'Nothing saved yet. Use "Save to Library" to keep the current document in this browser.';
+      note.textContent = 'Nothing saved here yet. Use "Save to Library" to add the current document.';
       libGrid.appendChild(note);
       return;
     }
@@ -1142,44 +1372,87 @@
       card.type = 'button';
       card.className = 'tpl-card';
       card.style.position = 'relative';
-      card.innerHTML = `<div class="tpl-card-name">${esc(entry.name)}</div><div class="tpl-card-desc">Saved ${new Date(entry.savedAt).toLocaleDateString()}</div><span class="row-remove" data-lib-delete="${entry.id}" style="position:absolute; top:6px; right:6px;">&times;</span>`;
-      card.addEventListener('click', (e) => {
+      card.innerHTML = `<div class="tpl-card-name">${esc(entry.name)}</div><div class="tpl-card-desc">Saved ${new Date(entry.updated_at).toLocaleDateString()}${entry.created_by ? ' by ' + esc(entry.created_by) : ''}</div><span class="tpl-card-dept">${esc(departmentLabel(entry.department))}</span><span class="row-remove" data-lib-delete="${entry.id}" style="position:absolute; top:6px; right:6px;">&times;</span>`;
+      card.addEventListener('click', async (e) => {
         if (e.target.dataset.libDelete) return;
-        loadSnapshot(entry.snapshot);
+        const full = await apiFetch(`/api/v1/entries/${entry.id}`);
+        if (!full.ok) { alert('Could not load this document from the server.'); return; }
+        loadSnapshot(full.data.snapshot);
         closeLibModal();
       });
       card.querySelector('[data-lib-delete]').addEventListener('click', (e) => {
         e.stopPropagation();
-        writeLibrary(readLibrary().filter((en) => en.id !== entry.id));
-        renderLibrary();
+        openPasscodeModal({
+          title: `Delete "${entry.name}"`,
+          lockedDepartment: entry.department,
+          onConfirm: async ({ passcode }) => {
+            const del = await apiFetch(`/api/v1/entries/${entry.id}`, { method: 'DELETE', body: JSON.stringify({ passcode }) });
+            if (del.ok) { renderLibrary(); return { ok: true }; }
+            return { ok: false, message: del.error === 'invalid_passcode' ? 'Incorrect passcode.' : 'Could not delete. Try again.' };
+          }
+        });
       });
       libGrid.appendChild(card);
     });
   }
 
-  function openLibModal() { renderLibrary(); libModal.classList.add('open'); }
+  async function openLibModal() {
+    libModal.classList.add('open');
+    const departments = await fetchDepartments();
+    if (departments.length) {
+      const previousValue = libDeptFilter.value;
+      libDeptFilter.innerHTML = '<option value="">All departments</option>' + departments.map((d) => `<option value="${esc(d.key)}">${esc(d.label)}</option>`).join('');
+      libDeptFilter.value = previousValue;
+    }
+    libSyncLocalBtn.style.display = readLocalBackup().length ? '' : 'none';
+    renderLibrary();
+  }
   function closeLibModal() { libModal.classList.remove('open'); }
 
+  libDeptFilter.addEventListener('change', renderLibrary);
+  let libSearchDebounce;
+  libSearchIn.addEventListener('input', () => {
+    clearTimeout(libSearchDebounce);
+    libSearchDebounce = setTimeout(renderLibrary, 250);
+  });
+
   document.getElementById('save-library-btn').addEventListener('click', () => {
+    if (!getServerUrl()) { openServerModal(); return; }
     const name = prompt('Name this document:', state.title || 'Untitled');
-    if (!name) return;
-    const entries = readLibrary();
-    entries.push({ id: uid(), name: name.trim(), savedAt: Date.now(), snapshot: snapshotState() });
-    writeLibrary(entries);
-    openLibModal();
+    if (!name || !name.trim()) return;
+    const snapshot = snapshotState();
+    openPasscodeModal({
+      title: 'Save to Library',
+      showAuthor: true,
+      onConfirm: async ({ department, passcode, author }) => {
+        const res = await apiFetch('/api/v1/entries', {
+          method: 'POST',
+          body: JSON.stringify({ name: name.trim(), department, created_by: author, passcode, snapshot })
+        });
+        if (res.ok) { openLibModal(); return { ok: true }; }
+        if (res.error === 'invalid_passcode') return { ok: false, message: 'Incorrect passcode for that department.' };
+        return { ok: false, message: 'Could not save. Check Server Settings and try again.' };
+      }
+    });
   });
   document.getElementById('open-library-btn').addEventListener('click', openLibModal);
   document.getElementById('lib-modal-close').addEventListener('click', closeLibModal);
   libModal.addEventListener('click', (e) => { if (e.target === libModal) closeLibModal(); });
 
-  document.getElementById('lib-export').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(readLibrary(), null, 2)], { type: 'application/json' });
+  document.getElementById('lib-export').addEventListener('click', async () => {
+    if (!getServerUrl()) { alert('Configure a library server first (Server Settings).'); return; }
+    const department = libDeptFilter.value || undefined;
+    const q = libSearchIn.value.trim() || undefined;
+    const res = await apiFetch('/api/v1/entries/export' + toQuery({ department, q }));
+    if (!res.ok) { alert('Could not export from the server.'); return; }
+    const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'cms-library.json';
     a.click();
     URL.revokeObjectURL(a.href);
   });
+
   const libImportFile = document.getElementById('lib-import-file');
   document.getElementById('lib-import').addEventListener('click', () => libImportFile.click());
   libImportFile.addEventListener('change', (e) => {
@@ -1187,18 +1460,61 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
+      let imported;
       try {
-        const imported = JSON.parse(reader.result);
+        imported = JSON.parse(reader.result);
         if (!Array.isArray(imported)) throw new Error('bad format');
-        const existing = readLibrary();
-        const ids = new Set(existing.map((en) => en.id));
-        imported.forEach((en) => { if (en && en.id && en.snapshot && !ids.has(en.id)) existing.push(en); });
-        writeLibrary(existing);
-        renderLibrary();
-      } catch { alert('Invalid library file.'); }
+      } catch {
+        alert('Invalid library file.');
+        libImportFile.value = '';
+        return;
+      }
+      if (!getServerUrl()) { openServerModal(); libImportFile.value = ''; return; }
+      openPasscodeModal({
+        title: `Import ${imported.length} document${imported.length === 1 ? '' : 's'}`,
+        onConfirm: async ({ department, passcode }) => {
+          const entries = imported.map((en) => ({
+            id: en.id, name: en.name, snapshot: en.snapshot, created_by: en.created_by, savedAt: en.savedAt || en.created_at
+          }));
+          const res = await apiFetch('/api/v1/entries/import', {
+            method: 'POST',
+            body: JSON.stringify({ department, passcode, entries })
+          });
+          if (res.ok) {
+            alert(`Imported ${res.data.inserted}, skipped ${res.data.skipped}${res.data.errors.length ? `, ${res.data.errors.length} error(s)` : ''}.`);
+            renderLibrary();
+            return { ok: true };
+          }
+          if (res.error === 'invalid_passcode') return { ok: false, message: 'Incorrect passcode for that department.' };
+          return { ok: false, message: 'Import failed. Try again.' };
+        }
+      });
       libImportFile.value = '';
     };
     reader.readAsText(file);
+  });
+
+  libSyncLocalBtn.addEventListener('click', () => {
+    const local = readLocalBackup();
+    if (!local.length) return;
+    openPasscodeModal({
+      title: `Sync ${local.length} local document${local.length === 1 ? '' : 's'} to server`,
+      onConfirm: async ({ department, passcode }) => {
+        const entries = local.map((en) => ({ id: en.id, name: en.name, snapshot: en.snapshot, savedAt: en.savedAt }));
+        const res = await apiFetch('/api/v1/entries/import', {
+          method: 'POST',
+          body: JSON.stringify({ department, passcode, entries })
+        });
+        if (res.ok) {
+          localStorage.setItem(LIB_SYNCED_KEY, String(Date.now()));
+          alert(`Synced ${res.data.inserted} document(s) to the server (skipped ${res.data.skipped} already present).`);
+          renderLibrary();
+          return { ok: true };
+        }
+        if (res.error === 'invalid_passcode') return { ok: false, message: 'Incorrect passcode for that department.' };
+        return { ok: false, message: 'Sync failed. Try again.' };
+      }
+    });
   });
 
   document.querySelectorAll('.tool-btn').forEach((btn) => {

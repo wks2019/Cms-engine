@@ -1,0 +1,10 @@
+{
+  "name": "cms-engine-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Netlify site for CMS Engine (static frontend + serverless shared-library API)",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0",
+    "bcryptjs": "^2.4.3"
+  }
+}
