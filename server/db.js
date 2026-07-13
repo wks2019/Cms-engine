@@ -14,9 +14,14 @@ db.pragma('busy_timeout = 5000');
 const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
 db.exec(schema);
 
+const existingCols = db.prepare("PRAGMA table_info(library_entries)").all().map((c) => c.name);
+if (!existingCols.includes('department_label')) {
+  db.exec('ALTER TABLE library_entries ADD COLUMN department_label TEXT');
+}
+
 const stmts = {
   listEntries: db.prepare(`
-    SELECT id, name, department, created_by, created_at, updated_at
+    SELECT id, name, department, department_label, created_by, created_at, updated_at
     FROM library_entries
     WHERE (@department IS NULL OR department = @department)
       AND (@q IS NULL OR name LIKE @q COLLATE NOCASE)
@@ -24,7 +29,7 @@ const stmts = {
     LIMIT @limit OFFSET @offset
   `),
   listEntriesFull: db.prepare(`
-    SELECT id, name, department, created_by, created_at, updated_at, snapshot
+    SELECT id, name, department, department_label, created_by, created_at, updated_at, snapshot
     FROM library_entries
     WHERE (@department IS NULL OR department = @department)
       AND (@q IS NULL OR name LIKE @q COLLATE NOCASE)
@@ -32,12 +37,12 @@ const stmts = {
   `),
   getEntry: db.prepare(`SELECT * FROM library_entries WHERE id = ?`),
   insertEntry: db.prepare(`
-    INSERT INTO library_entries (id, name, department, created_by, created_at, updated_at, snapshot)
-    VALUES (@id, @name, @department, @created_by, @created_at, @updated_at, @snapshot)
+    INSERT INTO library_entries (id, name, department, department_label, created_by, created_at, updated_at, snapshot)
+    VALUES (@id, @name, @department, @department_label, @created_by, @created_at, @updated_at, @snapshot)
   `),
   updateEntry: db.prepare(`
     UPDATE library_entries
-    SET name = @name, created_by = @created_by, snapshot = @snapshot, updated_at = @updated_at
+    SET name = @name, created_by = @created_by, department_label = @department_label, snapshot = @snapshot, updated_at = @updated_at
     WHERE id = @id
   `),
   deleteEntry: db.prepare(`DELETE FROM library_entries WHERE id = ?`),

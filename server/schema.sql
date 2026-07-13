@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS library_entries (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   department TEXT NOT NULL,
+  department_label TEXT,
   created_by TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,

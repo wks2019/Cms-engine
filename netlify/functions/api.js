@@ -17,6 +17,11 @@ const DEPARTMENTS = [
 ];
 const DEPARTMENT_KEYS = new Set(DEPARTMENTS.map((d) => d.key));
 const MAX_NAME_LENGTH = 200;
+const MAX_LABEL_LENGTH = 100;
+
+function sanitizeLabel(v) {
+  return typeof v === 'string' ? v.trim().slice(0, MAX_LABEL_LENGTH) : '';
+}
 
 function json(statusCode, body) {
   return { statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
@@ -46,6 +51,7 @@ function toMetadata(entry) {
     id: entry.id,
     name: entry.name,
     department: entry.department,
+    department_label: entry.department_label || '',
     created_by: entry.created_by || '',
     created_at: entry.created_at,
     updated_at: entry.updated_at
@@ -129,7 +135,7 @@ exports.handler = async (event) => {
 
     // POST /entries
     if (method === 'POST' && segments.length === 1 && segments[0] === 'entries') {
-      const { name, department, created_by, passcode, snapshot } = body;
+      const { name, department, created_by, department_label, passcode, snapshot } = body;
       if (typeof name !== 'string' || !name.trim() || name.length > MAX_NAME_LENGTH) return json(400, { error: 'invalid_name' });
       if (!isValidDepartment(department)) return json(400, { error: 'invalid_department' });
       if (!isPlainObject(snapshot)) return json(400, { error: 'invalid_snapshot' });
@@ -140,6 +146,7 @@ exports.handler = async (event) => {
         id: crypto.randomUUID(),
         name: name.trim(),
         department,
+        department_label: sanitizeLabel(department_label),
         created_by: typeof created_by === 'string' ? created_by.trim().slice(0, 100) : '',
         created_at: now,
         updated_at: now,
@@ -154,7 +161,7 @@ exports.handler = async (event) => {
       const id = segments[1];
       const existing = await entriesStore().get(id, { type: 'json' });
       if (!existing) return json(404, { error: 'not_found' });
-      const { name, created_by, passcode, snapshot } = body;
+      const { name, created_by, department_label, passcode, snapshot } = body;
       if (!(await verifyPasscode(existing.department, passcode))) return json(401, { error: 'invalid_passcode' });
       if (name !== undefined && (typeof name !== 'string' || !name.trim() || name.length > MAX_NAME_LENGTH)) return json(400, { error: 'invalid_name' });
       if (snapshot !== undefined && !isPlainObject(snapshot)) return json(400, { error: 'invalid_snapshot' });
@@ -163,6 +170,7 @@ exports.handler = async (event) => {
         ...existing,
         name: name !== undefined ? name.trim() : existing.name,
         created_by: created_by !== undefined ? String(created_by).trim().slice(0, 100) : existing.created_by,
+        department_label: department_label !== undefined ? sanitizeLabel(department_label) : existing.department_label,
         snapshot: snapshot !== undefined ? snapshot : existing.snapshot,
         updated_at: Date.now()
       };
@@ -203,6 +211,7 @@ exports.handler = async (event) => {
           id: candidateId,
           name: en.name.trim().slice(0, MAX_NAME_LENGTH),
           department,
+          department_label: sanitizeLabel(en.department_label),
           created_by: typeof en.created_by === 'string' ? en.created_by.trim().slice(0, 100) : '',
           created_at: typeof en.savedAt === 'number' ? en.savedAt : now,
           updated_at: now,

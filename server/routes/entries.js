@@ -6,12 +6,18 @@ const { isValidDepartment, verifyPasscode } = require('../lib/passcodes');
 const router = express.Router();
 
 const MAX_NAME_LENGTH = 200;
+const MAX_LABEL_LENGTH = 100;
+
+function sanitizeLabel(v) {
+  return typeof v === 'string' ? v.trim().slice(0, MAX_LABEL_LENGTH) : '';
+}
 
 function toMetadata(row) {
   return {
     id: row.id,
     name: row.name,
     department: row.department,
+    department_label: row.department_label || '',
     created_by: row.created_by || '',
     created_at: row.created_at,
     updated_at: row.updated_at
@@ -56,7 +62,7 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { name, department, created_by, passcode, snapshot } = req.body || {};
+  const { name, department, created_by, department_label, passcode, snapshot } = req.body || {};
 
   if (typeof name !== 'string' || !name.trim() || name.length > MAX_NAME_LENGTH) {
     return res.status(400).json({ error: 'invalid_name' });
@@ -76,6 +82,7 @@ router.post('/', (req, res) => {
     id: crypto.randomUUID(),
     name: name.trim(),
     department,
+    department_label: sanitizeLabel(department_label),
     created_by: typeof created_by === 'string' ? created_by.trim().slice(0, 100) : '',
     created_at: now,
     updated_at: now,
@@ -89,7 +96,7 @@ router.put('/:id', (req, res) => {
   const existing = stmts.getEntry.get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'not_found' });
 
-  const { name, created_by, passcode, snapshot } = req.body || {};
+  const { name, created_by, department_label, passcode, snapshot } = req.body || {};
 
   if (!verifyPasscode(existing.department, passcode)) {
     return res.status(401).json({ error: 'invalid_passcode' });
@@ -105,6 +112,7 @@ router.put('/:id', (req, res) => {
     id: existing.id,
     name: name !== undefined ? name.trim() : existing.name,
     created_by: created_by !== undefined ? String(created_by).trim().slice(0, 100) : existing.created_by,
+    department_label: department_label !== undefined ? sanitizeLabel(department_label) : existing.department_label,
     snapshot: snapshot !== undefined ? JSON.stringify(snapshot) : existing.snapshot,
     updated_at: Date.now()
   };
@@ -145,7 +153,7 @@ router.post('/import', (req, res) => {
 
   for (const entry of entries) {
     if (!entry || typeof entry !== 'object') { skipped++; continue; }
-    const { id, name, snapshot, created_by, savedAt } = entry;
+    const { id, name, snapshot, created_by, department_label, savedAt } = entry;
     const candidateId = typeof id === 'string' && id ? id : crypto.randomUUID();
 
     if (stmts.getEntry.get(candidateId)) { skipped++; continue; }
@@ -159,6 +167,7 @@ router.post('/import', (req, res) => {
         id: candidateId,
         name: name.trim().slice(0, MAX_NAME_LENGTH),
         department,
+        department_label: sanitizeLabel(department_label),
         created_by: typeof created_by === 'string' ? created_by.trim().slice(0, 100) : '',
         created_at: typeof savedAt === 'number' ? savedAt : now,
         updated_at: now,
