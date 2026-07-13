@@ -1170,7 +1170,14 @@
   let departmentsCache = null;
 
   function getServerUrl() {
-    return (localStorage.getItem(SERVER_URL_KEY) || '').trim().replace(/\/+$/, '');
+    const stored = (localStorage.getItem(SERVER_URL_KEY) || '').trim().replace(/\/+$/, '');
+    if (stored) return stored;
+    /* Zero-config default: if this page itself is hosted somewhere real (e.g. the Netlify
+       site, which also serves /api/v1/* via a function), use that as the server automatically.
+       Excluded for localhost so local static-file testing still requires an explicit Server URL. */
+    const { protocol, hostname, origin } = window.location;
+    if (/^https?:$/.test(protocol) && hostname !== 'localhost' && hostname !== '127.0.0.1') return origin;
+    return '';
   }
   function setServerUrl(url) {
     localStorage.setItem(SERVER_URL_KEY, url.trim().replace(/\/+$/, ''));
