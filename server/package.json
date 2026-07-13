@@ -1,0 +1,17 @@
+{
+  "name": "cms-engine-server",
+  "version": "1.0.0",
+  "description": "Shared library backend for CMS Engine (SOP builder)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed-passcode": "node scripts/seed-passcodes.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0"
+  }
+}
