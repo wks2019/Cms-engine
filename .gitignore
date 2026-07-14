@@ -3,3 +3,5 @@ server/data/
 server/.env
 node_modules/
 .netlify/
+__pycache__/
+*.pyc
