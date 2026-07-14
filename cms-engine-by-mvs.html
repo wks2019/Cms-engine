@@ -11,6 +11,9 @@
     --ink: #1B1A17;
     --ivory: #F6F2EA;
     --brass: #A9812F;
+    /* Darker brass for text/fills on white or #FBF6EC — meets WCAG AA 4.5:1 (the bare --brass accent is 3.58:1 and only safe for borders/decoration) */
+    --brass-text: #8C6B24;
+    --brass-text-hover: #6F5417;
     --stone-200: #E7E5E4;
     --stone-400: #A8A29E;
     --stone-500: #78716C;
@@ -30,6 +33,23 @@
     --radius-default: 0.25rem;
   }
   * { box-sizing: border-box; }
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
   body {
     margin: 0;
     font-family: 'Inter', sans-serif;
@@ -56,7 +76,7 @@
     font-size: 11px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--brass);
+    color: var(--brass-text);
     margin-bottom: 4px;
   }
   .editor h2 {
@@ -84,7 +104,7 @@
     border-radius: 4px;
     resize: vertical;
   }
-  .field input:focus, .field textarea:focus { outline: none; border-color: var(--brass); }
+  .field input:focus, .field textarea:focus { border-color: var(--brass); }
   .field select {
     width: 100%;
     border: 1px solid var(--stone-200);
@@ -94,7 +114,7 @@
     font-size: 14px;
     border-radius: 4px;
   }
-  .field select:focus { outline: none; border-color: var(--brass); }
+  .field select:focus { border-color: var(--brass); }
   .field input[type="range"] { width: 100%; accent-color: var(--brass); padding: 0; border: none; }
   .field input[type="color"] {
     width: 44px; height: 30px;
@@ -175,7 +195,7 @@
     font-family: 'IBM Plex Mono', monospace;
     font-size: 13px;
   }
-  .color-modal-hex:focus { outline: none; border-color: var(--brass); }
+  .color-modal-hex:focus { border-color: var(--brass); }
   .color-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .color-modal-actions button {
     border: none;
@@ -188,15 +208,15 @@
   }
   .color-modal-cancel { background: none; color: var(--stone-500); }
   .color-modal-cancel:hover { color: var(--stone-900); }
-  .color-modal-set { background: var(--brass); color: #fff; }
-  .color-modal-set:hover { background: #8C6B24; }
+  .color-modal-set { background: var(--brass-text); color: #fff; }
+  .color-modal-set:hover { background: var(--brass-text-hover); }
 
   .section-label {
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--stone-400);
+    color: var(--stone-500);
     margin: 24px 0 12px 0;
   }
 
@@ -241,7 +261,7 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--stone-400);
+    color: var(--stone-500);
     margin-bottom: 8px;
   }
   .block-controls {
@@ -260,7 +280,7 @@
   .block-controls button {
     border: none;
     background: none;
-    color: var(--stone-400);
+    color: var(--stone-500);
     font-size: 12px;
     padding: 2px 6px;
     cursor: pointer;
@@ -273,7 +293,7 @@
   .step-num {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 11px;
-    color: var(--brass);
+    color: var(--brass-text);
     width: 16px;
     flex-shrink: 0;
   }
@@ -286,7 +306,7 @@
   }
   .row-remove {
     border: none; background: none;
-    color: var(--stone-400);
+    color: var(--stone-500);
     cursor: pointer;
     font-size: 15px;
     padding: 2px 6px;
@@ -294,13 +314,13 @@
   .row-remove:hover { color: #DC2626; }
   .add-link {
     border: none; background: none;
-    color: var(--brass);
+    color: var(--brass-text);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     padding: 4px 0;
   }
-  .add-link:hover { color: #8C6B24; }
+  .add-link:hover { color: var(--brass-text-hover); }
   .media-input {
     width: 100%;
     border: 1px solid var(--stone-200);
@@ -333,7 +353,7 @@
     flex: 1; border: none; background: #fff; padding: 8px 0;
     font-size: 12px; font-family: 'Inter', sans-serif; color: var(--stone-500); cursor: pointer;
   }
-  .orientation-toggle button.active { background: var(--brass); color: #fff; }
+  .orientation-toggle button.active { background: var(--brass-text); color: #fff; }
   .sop-card::before {
     content: '';
     position: absolute;
@@ -356,7 +376,7 @@
     font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--brass);
+    color: var(--brass-text);
     margin-bottom: 10px;
   }
   .sop-section { margin-bottom: 28px; }
@@ -372,12 +392,12 @@
   .sop-steps li .n {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 12px;
-    color: var(--brass);
+    color: var(--brass-text);
     flex-shrink: 0;
     padding-top: 3px;
   }
   .sop-checklist li { font-size: 14px; margin-bottom: 8px; }
-  .sop-checklist li.checked { color: var(--stone-400); text-decoration: line-through; }
+  .sop-checklist li.checked { color: var(--stone-500); text-decoration: line-through; }
   .sop-media { margin-bottom: 28px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--token-border); }
   .sop-media img { width: 100%; display: block; }
   .sop-media-caption { padding: 10px 14px; font-size: 12px; color: var(--stone-500); font-style: italic; background: #fff; }
@@ -410,21 +430,21 @@
   .proc-step { margin-bottom: 18px; }
   .proc-step:last-child { margin-bottom: 0; }
   .proc-steps-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px 32px; }
-  .proc-step-title { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--brass); margin-bottom: 8px; }
+  .proc-step-title { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--brass-text); margin-bottom: 8px; }
   .proc-step ul { list-style: none; margin: 0; padding: 0; }
   .proc-step li { position: relative; padding-left: 16px; line-height: 1.55; margin-bottom: 6px; }
   .proc-step li::before { content: ''; position: absolute; left: 0; top: 8px; width: 4px; height: 4px; border-radius: 50%; background: var(--stone-400); }
   .sop-table-wrap { border: 1px solid var(--token-border); border-radius: var(--radius-default); overflow: hidden; }
   .sop-table { width: 100%; border-collapse: collapse; }
   .sop-table th, .sop-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--token-border); }
-  .sop-table thead th { background: rgba(169,129,47,0.08); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--brass); }
+  .sop-table thead th { background: rgba(169,129,47,0.08); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--brass-text); }
   .sop-table tbody tr:last-child td { border-bottom: none; }
   .sop-rating-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-  .sop-rating-stars { font-size: 13px; color: var(--brass); letter-spacing: 2px; }
+  .sop-rating-stars { font-size: 13px; color: var(--brass-text); letter-spacing: 2px; }
   .sop-field-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
   .sop-field-label { flex-shrink: 0; }
   .sop-field-line { flex: 1; border-bottom: 1px solid var(--stone-400); min-height: 18px; }
-  .sop-field-hint { font-family: 'IBM Plex Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--stone-400); flex-shrink: 0; }
+  .sop-field-hint { font-family: 'IBM Plex Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--stone-500); flex-shrink: 0; }
 
   .table-editor { display: flex; flex-direction: column; gap: 6px; }
   .table-editor-row { display: flex; gap: 6px; align-items: center; }
@@ -476,7 +496,7 @@
     font-size: 10px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--brass);
+    color: var(--brass-text);
     border: 1px solid var(--brass);
     border-radius: 3px;
     padding: 1px 6px;
@@ -527,7 +547,7 @@
   /* Helper notes */
   .helper-note {
     font-size: 11px;
-    color: var(--stone-400);
+    color: var(--stone-500);
     line-height: 1.5;
     margin: -8px 0 16px 0;
   }
@@ -536,7 +556,7 @@
     border-radius: var(--radius-default);
     padding: 16px;
     font-size: 12px;
-    color: var(--stone-400);
+    color: var(--stone-500);
     text-align: center;
     line-height: 1.5;
   }
@@ -553,9 +573,9 @@
       <button data-orientation="portrait" data-tip="Narrow card, single-column procedure.">Portrait</button>
       <button data-orientation="landscape" class="active" data-tip="Wide card, two-column procedure.">Landscape</button>
     </div>
-    <button class="tool-btn" id="open-templates-btn" style="margin-bottom:6px;" data-tip="Start from a preset. Replaces current title, purpose, scope and blocks."><span class="tool-icon">&#9776;</span>Templates</button>
-    <button class="tool-btn" id="save-library-btn" style="margin-bottom:6px;" data-tip="Save the current document to this browser's library."><span class="tool-icon">&#43;</span>Save to Library</button>
-    <button class="tool-btn" id="open-library-btn" style="margin-bottom:20px;" data-tip="Load or manage documents saved in this browser."><span class="tool-icon">&#9633;</span>My Library</button>
+    <button class="tool-btn" id="open-templates-btn" style="margin-bottom:6px;" data-tip="Start from a preset. Replaces current title, purpose, scope and blocks."><span class="tool-icon" aria-hidden="true">&#9776;</span>Templates</button>
+    <button class="tool-btn" id="save-library-btn" style="margin-bottom:6px;" data-tip="Save the current document to this browser's library."><span class="tool-icon" aria-hidden="true">&#43;</span>Save to Library</button>
+    <button class="tool-btn" id="open-library-btn" style="margin-bottom:20px;" data-tip="Load or manage documents saved in this browser."><span class="tool-icon" aria-hidden="true">&#9633;</span>My Library</button>
 
     <div class="section-label" style="margin-top:0;">Header</div>
     <div class="field">
@@ -667,12 +687,12 @@
     <div class="section-label">Add Block</div>
     <div class="helper-note">Blocks appear on the document in order. Hover a block below to reorder or delete it.</div>
     <div class="toolbar">
-      <button class="tool-btn" data-type="procedure"><span class="tool-icon">01</span>Procedure</button>
-      <button class="tool-btn" data-type="checklist"><span class="tool-icon">&#9744;</span>Checklist</button>
-      <button class="tool-btn" data-type="table"><span class="tool-icon">&#9638;</span>Table</button>
-      <button class="tool-btn" data-type="rating"><span class="tool-icon">&#9733;</span>Rating</button>
-      <button class="tool-btn" data-type="field"><span class="tool-icon">&#9997;</span>Field</button>
-      <button class="tool-btn" data-type="media"><span class="tool-icon">&#9642;</span>Media</button>
+      <button class="tool-btn" data-type="procedure"><span class="tool-icon" aria-hidden="true">01</span>Procedure</button>
+      <button class="tool-btn" data-type="checklist"><span class="tool-icon" aria-hidden="true">&#9744;</span>Checklist</button>
+      <button class="tool-btn" data-type="table"><span class="tool-icon" aria-hidden="true">&#9638;</span>Table</button>
+      <button class="tool-btn" data-type="rating"><span class="tool-icon" aria-hidden="true">&#9733;</span>Rating</button>
+      <button class="tool-btn" data-type="field"><span class="tool-icon" aria-hidden="true">&#9997;</span>Field</button>
+      <button class="tool-btn" data-type="media"><span class="tool-icon" aria-hidden="true">&#9642;</span>Media</button>
     </div>
 
     <div class="block-list" id="block-list"></div>
@@ -1386,19 +1406,30 @@
       return;
     }
     entries.forEach((entry) => {
+      const wrap = document.createElement('div');
+      wrap.style.position = 'relative';
+
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'tpl-card';
-      card.style.position = 'relative';
-      card.innerHTML = `<div class="tpl-card-name">${esc(entry.name)}</div><div class="tpl-card-desc">Saved ${new Date(entry.updated_at).toLocaleDateString()}${entry.created_by ? ' by ' + esc(entry.created_by) : ''}</div><span class="tpl-card-dept">${esc(entry.department_label || departmentLabel(entry.department))}</span><span class="row-remove" data-lib-delete="${entry.id}" style="position:absolute; top:6px; right:6px;">&times;</span>`;
-      card.addEventListener('click', async (e) => {
-        if (e.target.dataset.libDelete) return;
+      card.style.width = '100%';
+      card.innerHTML = `<div class="tpl-card-name">${esc(entry.name)}</div><div class="tpl-card-desc">Saved ${new Date(entry.updated_at).toLocaleDateString()}${entry.created_by ? ' by ' + esc(entry.created_by) : ''}</div><span class="tpl-card-dept">${esc(entry.department_label || departmentLabel(entry.department))}</span>`;
+      card.addEventListener('click', async () => {
         const full = await apiFetch(`/api/v1/entries/${entry.id}`);
         if (!full.ok) { alert('Could not load this document from the server.'); return; }
         loadSnapshot(full.data.snapshot);
         closeLibModal();
       });
-      card.querySelector('[data-lib-delete]').addEventListener('click', (e) => {
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'row-remove';
+      delBtn.setAttribute('aria-label', `Delete ${entry.name}`);
+      delBtn.style.position = 'absolute';
+      delBtn.style.top = '6px';
+      delBtn.style.right = '6px';
+      delBtn.textContent = '×';
+      delBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         openPasscodeModal({
           title: `Delete "${entry.name}"`,
@@ -1410,7 +1441,10 @@
           }
         });
       });
-      libGrid.appendChild(card);
+
+      wrap.appendChild(card);
+      wrap.appendChild(delBtn);
+      libGrid.appendChild(wrap);
     });
   }
 
@@ -1572,13 +1606,13 @@
         html += `<div class="proc-editor-step-header">`;
         html += `<span class="step-num">${String(si + 1).padStart(2, '0')}</span>`;
         html += `<input type="text" class="proc-editor-title-input" placeholder="Step title" value="${esc(step.title)}" data-step-title="${si}">`;
-        html += `<button class="row-remove" data-remove-step="${si}">&times;</button>`;
+        html += `<button class="row-remove" data-remove-step="${si}" aria-label="Remove step ${si + 1}">&times;</button>`;
         html += `</div>`;
         step.bullets.forEach((bullet, bi) => {
           html += `
             <div class="proc-editor-bullet-row">
               <input type="text" placeholder="Bullet point" value="${esc(bullet)}" data-bullet-step="${si}" data-bullet-index="${bi}">
-              <button class="row-remove" data-remove-bullet-step="${si}" data-remove-bullet-index="${bi}">&times;</button>
+              <button class="row-remove" data-remove-bullet-step="${si}" data-remove-bullet-index="${bi}" aria-label="Remove bullet">&times;</button>
             </div>`;
         });
         html += `<button class="add-link" data-add-bullet-step="${si}" style="margin-left:12px;">+ Add bullet</button>`;
@@ -1594,7 +1628,7 @@
           <div class="item-row">
             <input type="checkbox" ${item.checked ? 'checked' : ''} data-item-check="${item.id}">
             <input type="text" value="${esc(item.text)}" placeholder="Checklist item" data-item-text="${item.id}">
-            <button class="row-remove" data-remove-item="${item.id}">&times;</button>
+            <button class="row-remove" data-remove-item="${item.id}" aria-label="Remove item">&times;</button>
           </div>`;
       });
       html += `<button class="add-link" data-add-item>+ Add item</button>`;
@@ -1606,14 +1640,14 @@
       block.headers.forEach((h, ci) => {
         html += `<input type="text" class="table-cell-input" value="${esc(h)}" placeholder="Header" data-header-index="${ci}">`;
       });
-      html += `<button class="row-remove" data-remove-col>&times;</button>`;
+      html += `<button class="row-remove" data-remove-col aria-label="Remove column">&times;</button>`;
       html += '</div>';
       block.rows.forEach((row, ri) => {
         html += '<div class="table-editor-row">';
         row.forEach((cell, ci) => {
           html += `<input type="text" class="table-cell-input" value="${esc(cell)}" data-row="${ri}" data-col="${ci}">`;
         });
-        html += `<button class="row-remove" data-remove-row="${ri}">&times;</button>`;
+        html += `<button class="row-remove" data-remove-row="${ri}" aria-label="Remove row ${ri + 1}">&times;</button>`;
         html += '</div>';
       });
       html += '<div style="display:flex; gap:12px; margin-top:2px;">';
@@ -1631,7 +1665,7 @@
             <select data-rating-stars="${item.id}" style="border:1px solid var(--stone-200); border-radius:4px; padding:6px;">
               ${[1,2,3,4,5].map((n) => `<option value="${n}" ${item.stars === n ? 'selected' : ''}>${n}&#9733;</option>`).join('')}
             </select>
-            <button class="row-remove" data-remove-rating="${item.id}">&times;</button>
+            <button class="row-remove" data-remove-rating="${item.id}" aria-label="Remove rating">&times;</button>
           </div>`;
       });
       html += `<button class="add-link" data-add-rating>+ Add rating</button>`;
@@ -1646,7 +1680,7 @@
             <select data-field-type="${item.id}" style="border:1px solid var(--stone-200); border-radius:4px; padding:6px;">
               ${['text','date','time','number','signature'].map((t) => `<option value="${t}" ${item.fieldType === t ? 'selected' : ''}>${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join('')}
             </select>
-            <button class="row-remove" data-remove-field="${item.id}">&times;</button>
+            <button class="row-remove" data-remove-field="${item.id}" aria-label="Remove field">&times;</button>
           </div>`;
       });
       html += `<button class="add-link" data-add-field>+ Add field</button>`;
@@ -1673,9 +1707,9 @@
       wrap.className = 'block' + (selectedId === block.id ? ' selected' : '');
       wrap.innerHTML = `
         <div class="block-controls">
-          <button data-move="-1" ${index === 0 ? 'disabled' : ''}>&uarr;</button>
-          <button data-move="1" ${index === state.blocks.length - 1 ? 'disabled' : ''}>&darr;</button>
-          <button class="delete" data-delete>&times;</button>
+          <button data-move="-1" aria-label="Move block up" ${index === 0 ? 'disabled' : ''}>&uarr;</button>
+          <button data-move="1" aria-label="Move block down" ${index === state.blocks.length - 1 ? 'disabled' : ''}>&darr;</button>
+          <button class="delete" data-delete aria-label="Delete block">&times;</button>
         </div>
         <div class="block-type-label">${blockLabel(block.type)}</div>
         ${renderBlockEditor(block)}
