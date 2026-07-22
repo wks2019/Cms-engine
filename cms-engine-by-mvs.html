@@ -700,8 +700,12 @@
   <div class="tpl-modal">
     <h3>My Library</h3>
     <div class="tpl-grid" id="lib-grid"></div>
-    <div style="display:flex; gap:12px; align-items:center;">
+    <div class="helper-note" id="lib-folder-status" style="margin:0 0 12px 0;"></div>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
       <button class="tpl-modal-close" id="lib-modal-close">Close</button>
+      <button class="add-link" id="lib-choose-folder" data-tip="Pick a folder on your PC to store SOP files (Chrome/Edge).">Choose Folder</button>
+      <button class="add-link" id="lib-save-folder" data-tip="Save the current document as a .json file in your chosen folder.">Save to Folder</button>
+      <button class="add-link" id="lib-open-folder" data-tip="Open a saved .json file from your PC.">Open from Folder</button>
       <button class="add-link" id="lib-export">Export JSON</button>
       <button class="add-link" id="lib-import">Import JSON</button>
       <input type="file" id="lib-import-file" accept=".json" style="display:none;">
@@ -1200,6 +1204,68 @@
     };
     reader.readAsText(file);
   });
+
+  /* ---- Folder storage (File System Access API, Chromium only) ---- */
+  const fsSupported = 'showDirectoryPicker' in window;
+  let libDirHandle = null;
+  const folderStatusEl = document.getElementById('lib-folder-status');
+  const chooseFolderBtn = document.getElementById('lib-choose-folder');
+  const saveFolderBtn = document.getElementById('lib-save-folder');
+  const openFolderBtn = document.getElementById('lib-open-folder');
+
+  function safeFileName(name) {
+    return (name || 'sop').replace(/[^a-z0-9\-_ ]/gi, '').trim().replace(/\s+/g, '-').toLowerCase() || 'sop';
+  }
+
+  function updateFolderStatus() {
+    if (!fsSupported) {
+      folderStatusEl.textContent = 'Folder storage needs Chrome or Edge. Use Export / Import JSON in this browser.';
+      [chooseFolderBtn, saveFolderBtn, openFolderBtn].forEach((b) => { b.style.opacity = '0.4'; b.style.pointerEvents = 'none'; });
+      return;
+    }
+    folderStatusEl.textContent = libDirHandle
+      ? `Saving to folder: ${libDirHandle.name}`
+      : 'No folder chosen. Click "Choose Folder" to store SOP files on your PC.';
+  }
+
+  if (chooseFolderBtn) chooseFolderBtn.addEventListener('click', async () => {
+    try {
+      libDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      updateFolderStatus();
+    } catch { /* user cancelled */ }
+  });
+
+  if (saveFolderBtn) saveFolderBtn.addEventListener('click', async () => {
+    if (!fsSupported) return;
+    try {
+      if (!libDirHandle) libDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const fileName = safeFileName(state.title) + '.json';
+      const fileHandle = await libDirHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify({ id: uid(), name: state.title || 'Untitled', savedAt: Date.now(), snapshot: snapshotState() }, null, 2));
+      await writable.close();
+      updateFolderStatus();
+      folderStatusEl.textContent = `Saved "${fileName}" to folder: ${libDirHandle.name}`;
+    } catch (err) { alert('Could not save to folder: ' + err.message); }
+  });
+
+  if (openFolderBtn) openFolderBtn.addEventListener('click', async () => {
+    if (!fsSupported) return;
+    try {
+      const [fileHandle] = await window.showOpenFilePicker({
+        types: [{ description: 'SOP JSON', accept: { 'application/json': ['.json'] } }],
+        multiple: false
+      });
+      const file = await fileHandle.getFile();
+      const data = JSON.parse(await file.text());
+      const snap = data.snapshot || data;
+      if (!snap || !snap.blocks) throw new Error('Not a valid SOP file.');
+      loadSnapshot(snap);
+      closeLibModal();
+    } catch (err) { if (err.name !== 'AbortError') alert('Could not open file: ' + err.message); }
+  });
+
+  updateFolderStatus();
 
   document.querySelectorAll('.tool-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
